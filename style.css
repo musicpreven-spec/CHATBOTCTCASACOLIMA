@@ -1,0 +1,247 @@
+/* style.css - Chatbot Casa Colima (sin :root variables) */
+
+/* Page */
+html,body {
+  height:100%;
+  margin:0;
+  background: linear-gradient(180deg,#f3fbfb 0,#eaf6f5 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+
+/* App container */
+.app {
+  width:100%;
+  max-width:980px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* chat container */
+.chat-wrap {
+  width:420px;
+  height:720px;
+  border-radius:14px;
+  box-shadow:0 18px 50px rgba(10,10,10,.12);
+  background:#ffffff;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,.04);
+  position:relative;
+}
+
+/* header */
+.header {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px;
+  border-bottom:1px solid rgba(0,0,0,.04);
+  background: linear-gradient(90deg, rgba(40,166,166,0.03), rgba(120,120,170,0.02));
+}
+
+/* avatar container - INCREASED SIZE */
+.avatar-wrap {
+  width:96px;
+  height:96px;
+  border-radius:50%;
+  position:relative;
+  flex:0 0 96px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.avatar-img {
+  width:96px;
+  height:96px;
+  border-radius:50%;
+  object-fit:cover;
+  display:block;
+  transition:transform .35s cubic-bezier(.2,.9,.2,1), filter .35s ease, opacity .18s ease;
+  will-change: transform, filter, opacity;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+  border: 2px solid rgba(0,0,0,0.04);
+}
+
+.avatar-glow {
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  opacity:0;
+  transition:opacity .36s ease;
+  box-shadow:0 12px 40px rgba(40,166,166,0.18);
+}
+
+/* header text */
+.title {
+  font-weight:700;
+  color:#074c4c;
+}
+.subtitle {
+  font-size:12px;
+  color:#6f7b7b;
+  margin-top:2px;
+}
+
+/* messages area - pattern light "dibujitos" */
+.messages {
+  flex:1;
+  padding:18px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  overflow:auto;
+  background-color:#f7fbfb;
+  background-image:
+    radial-gradient(circle at 5% 10%, rgba(0,0,0,0.03) 0.6px, transparent 0.7px),
+    radial-gradient(circle at 30% 80%, rgba(0,0,0,0.02) 0.6px, transparent 0.7px),
+    radial-gradient(circle at 80% 30%, rgba(0,0,0,0.02) 0.6px, transparent 0.7px);
+  background-size: 28px 28px, 34px 34px, 22px 22px;
+}
+
+/* bubble base */
+.bubble {
+  max-width:78%;
+  padding:12px 14px;
+  border-radius:18px;
+  line-height:1.35;
+  font-size:14px;
+  position:relative;
+  box-shadow:0 1px 0 rgba(0,0,0,.02);
+  opacity:0;
+  transform:translateY(8px) scale(.995);
+  animation:bubbleIn .28s forwards cubic-bezier(.2,.9,.2,1);
+}
+
+/* bot bubble (left) */
+.bubble.bot {
+  align-self:flex-start;
+  background:#f1fdfd;
+  border-top-left-radius:6px;
+  margin-left:6px;
+}
+.bubble.bot::after {
+  content:"";
+  position:absolute;
+  left:-6px;
+  bottom:8px;
+  width:12px;
+  height:12px;
+  background:#f1fdfd;
+  transform:rotate(45deg);
+  z-index:-1;
+  border-bottom-left-radius:2px;
+  border-top-right-radius:2px;
+}
+
+/* user bubble (right) */
+.bubble.user {
+  align-self:flex-end;
+  background:#dcf8c6;
+  border-top-right-radius:6px;
+  margin-right:6px;
+}
+.bubble.user::after {
+  content:"";
+  position:absolute;
+  right:-6px;
+  bottom:8px;
+  width:12px;
+  height:12px;
+  background:#dcf8c6;
+  transform:rotate(45deg);
+  z-index:-1;
+  border-bottom-right-radius:2px;
+  border-top-left-radius:2px;
+}
+
+@keyframes bubbleIn {
+  from { opacity:0; transform:translateY(10px) scale(.985); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+
+/* thinking bubble */
+.thinking-bubble {
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+  padding:8px 12px;
+  border-radius:18px;
+  background:#eef7f7;
+}
+.dots span {
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#6fb9b9;
+  animation:dot 1s infinite;
+}
+.dots span:nth-child(2) { animation-delay:.12s; }
+.dots span:nth-child(3) { animation-delay:.24s; }
+@keyframes dot { 0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)} }
+
+/* controls */
+.controls {
+  padding:12px;
+  border-top:1px solid rgba(0,0,0,.04);
+  display:flex;
+  gap:10px;
+  align-items:center;
+  background:#fff;
+}
+.input {
+  flex:1;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  background:#fbfffe;
+  padding:8px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.04);
+}
+.input input {
+  border:0;
+  outline:none;
+  background:transparent;
+  font-size:14px;
+  width:100%;
+}
+.btn {
+  background:#28a6a6;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:10px;
+  border:0;
+  cursor:pointer;
+  font-weight:700;
+  letter-spacing:.2px;
+  box-shadow:0 6px 18px rgba(40,166,166,.12);
+}
+
+/* avatar state animations (utility classes applied by JS) */
+.avatar-spin { animation: avatarSpin .6s cubic-bezier(.2,.9,.2,1) forwards; }
+@keyframes avatarSpin { 0%{transform:rotateY(0) scale(1)} 50%{transform:rotateY(90deg) scale(0.98)} 100%{transform:rotateY(0) scale(1)} }
+
+.avatar-flip { animation: avatarFlip .55s ease forwards; transform-origin:center; }
+@keyframes avatarFlip { 0%{transform: rotateX(0) translateY(0)} 50%{transform: rotateX(20deg) translateY(-3px)} 100%{transform: rotateX(0) translateY(0)} }
+
+.avatar-glow-on { opacity:1; }
+
+/* reaction pop */
+.reaction-pop { display:inline-block; margin-left:8px; animation:pop .5s ease; }
+@keyframes pop { 0%{transform:scale(.2) rotate(-10deg);opacity:0} 60%{transform:scale(1.08) rotate(6deg);opacity:1} 100%{transform:scale(1) rotate(0)} }
+
+/* small responsive */
+@media (max-width:420px) {
+  .chat-wrap { width:100%; height:92vh; }
+  .avatar-wrap, .avatar-img { width:80px; height:80px; }
+}
