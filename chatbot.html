@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chatbot Casa Colima — Demo</title>
+<style>
+  :root{
+    --bg:#e9f6f6;
+    --chat-bg:#ffffff;
+    --accent:#28a6a6; /* turquesa */
+    --muted:#7a7a7a;
+    --bot-bubble:#f1fdfd;
+    --user-bubble:#dcf8c6;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6fbfb 0,#e9f6f6 100%);display:flex;align-items:center;justify-content:center;padding:16px;}
+  .chat-wrap{width:380px;height:640px;border-radius:12px;box-shadow:0 10px 30px rgba(10,10,10,.12);background:var(--chat-bg);display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.04);}
+  .header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.04);background:linear-gradient(90deg, rgba(40,166,166,0.06), rgba(120,120,170,0.03));}
+  .avatar{width:48px;height:48px;border-radius:50%;position:relative;flex:0 0 48px;overflow:hidden;border:2px solid rgba(0,0,0,.04);background:#fff;}
+  .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  /* Avatar eye blink (pseudo animated) */
+  .avatar::after{
+    content:"";position:absolute;left:0;right:0;top:0;height:100%;pointer-events:none;
+    animation:blink 6s linear infinite; /* slow periodic blink overlay */
+    background:linear-gradient(rgba(255,255,255,0), rgba(255,255,255,0));
+  }
+  @keyframes blink{
+    0%,92%{box-shadow:none;transform:translateY(0)}
+    94%{box-shadow: inset 0 -20px 0 #fff; transform:translateY(0)}
+    96%{box-shadow:none}
+  }
+  .header .title{font-weight:600;color:#0b5161;}
+  .header .subtitle{font-size:12px;color:var(--muted);margin-top:2px;}
+  .messages{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;background:linear-gradient(180deg, transparent, rgba(0,0,0,.01));}
+  .bubble{max-width:78%;padding:10px 12px;border-radius:14px;line-height:1.3;font-size:14px;box-shadow:0 1px 0 rgba(0,0,0,.02);}
+  .bot{align-self:flex-start;background:var(--bot-bubble);border-top-left-radius:6px;}
+  .user{align-self:flex-end;background:var(--user-bubble);border-top-right-radius:6px;}
+  .bot-row{display:flex;gap:8px;align-items:flex-end;}
+  .bot .meta{display:block;font-size:12px;color:var(--muted);margin-top:6px;}
+  .controls{padding:12px;border-top:1px solid rgba(0,0,0,.04);display:flex;gap:8px;align-items:center;background:#fff;}
+  .input{flex:1;display:flex;gap:8px;align-items:center;background:#fbfffe;padding:8px;border-radius:999px;border:1px solid rgba(0,0,0,.04);}
+  .input input{border:0;outline:none;background:transparent;font-size:14px;width:100%;}
+  .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:600;}
+  .quick-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .chip{background:#f3fbfb;padding:6px 8px;border-radius:18px;font-size:13px;border:1px solid rgba(0,0,0,.03);cursor:pointer;}
+  .thinking{display:inline-block;height:18px;padding:6px 8px;border-radius:10px;background:#eef7f7;}
+  .dots span{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;background:#8fbfbf;animation:dot 1s infinite;opacity:.9}
+  .dots span:nth-child(2){animation-delay:.12s}
+  .dots span:nth-child(3){animation-delay:.24s}
+  @keyframes dot{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
+  /* small emoji reaction animation */
+  .reaction{display:inline-block;margin-left:8px;transform-origin:center;animation:pop .45s ease;}
+  @keyframes pop{0%{transform:scale(.2) rotate(-10deg);opacity:0}60%{transform:scale(1.1) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0deg)}}
+  /* scroll behavior */
+  .messages:focus{outline:none}
+  /* accessibility focus */
+  .chip:focus{outline:2px solid rgba(40,166,166,.18)}
+  /* small responsive */
+  @media (max-width:420px){
+    .chat-wrap{width:100%;height:92vh}
+  }
+</style>
+</head>
+<body>
+  <div class="chat-wrap" role="application" aria-label="Chatbot Casa Colima">
+    <div class="header">
+      <div class="avatar" aria-hidden="true">
+        <!-- Reemplaza avatar.png con tu avatar profesional -->
+        <img src="https://via.placeholder.com/128x128.png?text=Avatar" alt="Avatar del especialista de Casa Colima">
+      </div>
+      <div>
+        <div class="title">Casa Colima — Especialista</div>
+        <div class="subtitle">Experto en salud mental y adicciones · 🤝 Empatía</div>
+      </div>
+    </div>
+
+    <div class="messages" id="msgs" tabindex="0" aria-live="polite">
+      <!-- Mensajes inyectados por JS -->
+    </div>
+
+    <div class="controls">
+      <div class="input" role="search" aria-label="Escribe un mensaje">
+        <input id="userInput" placeholder="Escribe un mensaje..." aria-label="Mensaje">
+      </div>
+      <button class="btn" id="sendBtn" aria-label="Enviar">Enviar</button>
+    </div>
+  </div>
+
+<script>
+  // Chat demo logic
+  const msgs = document.getElementById('msgs');
+  const input = document.getElementById('userInput');
+  const sendBtn = document.getElementById('sendBtn');
+
+  // Helper to append bot message
+  function appendBot(text, opts = {}) {
+    const row = document.createElement('div');
+    row.className = 'bot-row';
+    const avatarWrap = document.createElement('div');
+    avatarWrap.style.width = '36px'; avatarWrap.style.height = '36px';
+    avatarWrap.style.flex = '0 0 36px';
+    avatarWrap.style.marginTop = '6px';
+    avatarWrap.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;overflow:hidden"><img src="https://via.placeholder.com/64" style="width:100%;height:100%;object-fit:cover" alt=""></div>';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble bot';
+    bubble.innerHTML = text;
+    row.appendChild(avatarWrap);
+    row.appendChild(bubble);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+    if (opts.reaction) {
+      const r = document.createElement('span'); r.className='reaction'; r.textContent = opts.reaction; bubble.appendChild(r);
+    }
+  }
+
+  // Helper to append user message
+  function appendUser(text) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble user';
+    bubble.textContent = text;
+    msgs.appendChild(bubble);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Simulate "typing"/thinking indicator
+  function showThinking() {
+    const wrap = document.createElement('div');
+    wrap.className = 'bot-row thinking-row';
+    wrap.innerHTML = '<div style="width:36px;height:36px;margin-top:6px"></div>' +
+      '<div class="bubble bot thinking"><span class="dots"><span></span><span></span><span></span></span></div>';
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+    return wrap;
+  }
+
+  // Initial greeting and quick options
+  function startChat(){
+    appendBot('<strong>Hola — soy el especialista de Casa Colima.</strong><br>¿En qué te puedo ayudar hoy?');
+    // quick options as chips
+    const chips = document.createElement('div');
+    chips.className = 'quick-options';
+    ['Problemas de adicción','Buscar apoyo','Contacto','Recursos inmediatos'].forEach(opt => {
+      const c = document.createElement('button');
+      c.className='chip';
+      c.type='button';
+      c.textContent = opt;
+      c.onclick = ()=> handleQuick(opt);
+      c.setAttribute('aria-label','Opción: '+opt);
+      chips.appendChild(c);
+    });
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(chips);
+    msgs.appendChild(wrapper);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function handleQuick(opt){
+    appendUser(opt);
+    // remove quick options (simple approach: clear node)
+    // We will append a "thinking" indicator, then a response
+    const thinking = showThinking();
+    setTimeout(() => {
+      thinking.remove();
+      if (opt==='Problemas de adicción'){
+        appendBot('Siento que estés pasando por eso. ¿Qué sustancia te preocupa o afecta a alguien cercano?');
+        appendBot('Si hay riesgo inmediato o una emergencia, por favor llama a los servicios de emergencia o acude al centro de salud más cercano.', {reaction:'⚠️'});
+      } else if (opt==='Buscar apoyo'){
+        appendBot('Puedo ayudarte a encontrar grupos de apoyo, terapia individual o procesos de desintoxicación. ¿Prefieres atención presencial o en línea?');
+      } else if (opt==='Contacto'){
+        appendBot('Nuestros números de contacto: <strong>55 1234 5678</strong> · Correo: <em>contacto@casacolima.mx</em>');
+      } else if (opt==='Recursos inmediatos'){
+        appendBot('Te envío guías y técnicas breves para manejar ansiedad y craving. ¿Quieres que las reciba por WhatsApp o correo?');
+      } else {
+        appendBot('Gracias por tu mensaje. ¿Quieres que lo derivemos a un especialista?');
+      }
+    }, 900);
+  }
+
+  // handle send
+  sendBtn.addEventListener('click', ()=> {
+    const val = input.value.trim();
+    if(!val) return;
+    appendUser(val);
+    input.value='';
+    // small logic: if user asks "problemas" anywhere, simulate flow
+    const thinking = showThinking();
+    setTimeout(()=>{
+      thinking.remove();
+      if(/adicci|droga|cristal|alcohol|heroína|cocaína/i.test(val)){
+        appendBot('Gracias por compartir. ¿Hay riesgo físico inmediato? (si/no)');
+      } else if (/gracias|ok|vale|perfecto/i.test(val)){
+        appendBot('Me alegra ser de ayuda. ¿Deseas que reserve una sesión o te envío recursos?',{reaction:'😊'});
+      } else {
+        appendBot('Entiendo. ¿Deseas que te ofrezca recursos, un contacto o agenda una llamada?');
+      }
+    }, 900);
+  });
+
+  // Also press Enter to send
+  input.addEventListener('keydown', (e)=> {
+    if(e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); }
+  });
+
+  // Start
+  startChat();
+</script>
+</body>
+</html>
