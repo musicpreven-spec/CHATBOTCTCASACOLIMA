@@ -11,6 +11,7 @@
     <section class="chat-wrap" id="chatWrap">
       <header class="header">
         <div class="avatar-wrap" aria-hidden="true">
+          <!-- Asegúrate de que el archivo exista EXACTAMENTE en assets/avatar_idle.png -->
           <img id="avatarImg" class="avatar-img" src="assets/avatar_idle.png" alt="Avatar - especialista Casa Colima">
           <div id="avatarGlow" class="avatar-glow" aria-hidden="true"></div>
         </div>
@@ -32,5 +33,19 @@
   </main>
 
 <script src="script.js" defer></script>
+
+<!-- Fallback tiny placeholder (data URI) en caso de que la imagen real no cargue -->
+<script>
+  // si la imagen no carga, mostrará pequeño placeholder y mostrará aviso en consola
+  document.addEventListener('DOMContentLoaded', () => {
+    const img = document.getElementById('avatarImg');
+    img.addEventListener('error', () => {
+      console.warn('Avatar no encontrado en assets/avatar_idle.png — revisa nombre y ruta.');
+      // placeholder simple (círculo SVG)
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="100%" height="100%" fill="%23eaf6f5"/><circle cx="128" cy="96" r="60" fill="%23228a8a"/><rect x="56" y="160" width="144" height="60" rx="12" fill="%233e9a99"/></svg>';
+      img.alt = 'Avatar no disponible';
+    });
+  });
+</script>
 </body>
 </html>
