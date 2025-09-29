@@ -4,66 +4,23 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Chatbot Casa Colima — Especialista</title>
-<style>
-/* --- CSS embebido para evitar roturas por rutas mientras probamos --- */
-
-/* base */
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#f3fbfb 0,#eaf6f5 100%);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
-.app{width:100%;max-width:980px;display:flex;justify-content:center;align-items:center}
-
-/* chat (compacto) */
-.chat-wrap{width:420px;height:600px;border-radius:14px;box-shadow:0 18px 50px rgba(10,10,10,.12);background:#ffffff;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.04);position:relative}
-
-/* header */
-.header{display:flex;align-items:center;gap:14px;padding:12px;border-bottom:1px solid rgba(0,0,0,.04);background:linear-gradient(90deg, rgba(40,166,166,0.03), rgba(120,120,170,0.02))}
-
-/* avatar (cuadrado suave) */
-.avatar-wrap{width:112px;height:112px;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(240,254,254,0.6),rgba(255,255,255,0.4));box-shadow:0 6px 18px rgba(0,0,0,0.08)}
-.avatar-img{width:96px;height:96px;border-radius:12px;object-fit:cover;display:block;transition:transform .28s ease,opacity .18s ease;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:1px solid rgba(0,0,0,0.03)}
-
-/* header text */
-.title{font-weight:700;color:#074c4c}
-.subtitle{font-size:12px;color:#6f7b7b;margin-top:4px}
-
-/* messages area with small pattern (data-uri SVG) */
-.messages{
-  flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:10px;overflow:auto;background-color:#f7fbfb;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><circle cx='10' cy='10' r='1' fill='%23000000' fill-opacity='0.03' /><circle cx='30' cy='40' r='1' fill='%23000000' fill-opacity='0.02' /><circle cx='90' cy='20' r='1' fill='%23000000' fill-opacity='0.02' /><path d='M15 95c6-6 20-6 26 0' stroke='%23e1f6f6' stroke-width='2' opacity='0.6' fill='none' /></svg>");
-  background-repeat:repeat;background-size:120px 120px;
-}
-
-/* bubbles (left / right) */
-.bubble{max-width:78%;padding:10px 12px;border-radius:16px;line-height:1.35;font-size:14px;position:relative;box-shadow:0 1px 0 rgba(0,0,0,.02);opacity:0;transform:translateY(6px) scale(.995);animation:bubbleIn .24s forwards cubic-bezier(.2,.9,.2,1)}
-.bubble.bot{align-self:flex-start;background:#f1fdfd;border-top-left-radius:6px;margin-left:6px}
-.bubble.bot::after{content:"";position:absolute;left:-6px;bottom:8px;width:12px;height:12px;background:#f1fdfd;transform:rotate(45deg);z-index:-1;border-bottom-left-radius:2px;border-top-right-radius:2px}
-.bubble.user{align-self:flex-end;background:#dcf8c6;border-top-right-radius:6px;margin-right:6px}
-.bubble.user::after{content:"";position:absolute;right:-6px;bottom:8px;width:12px;height:12px;background:#dcf8c6;transform:rotate(45deg);z-index:-1;border-bottom-right-radius:2px;border-top-left-radius:2px}
-@keyframes bubbleIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-
-/* thinking */
-.thinking-bubble{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:18px;background:#eef7f7}
-.dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#6fb9b9;animation:dot 1s infinite}
-.dots span:nth-child(2){animation-delay:.12s}
-.dots span:nth-child(3){animation-delay:.24s}
-@keyframes dot{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
-
-/* controls */
-.controls{padding:10px;border-top:1px solid rgba(0,0,0,.04);display:flex;gap:10px;align-items:center;background:#fff}
-.input{flex:1;display:flex;gap:8px;align-items:center;background:#fbfffe;padding:8px;border-radius:999px;border:1px solid rgba(0,0,0,.04)}
-.input input{border:0;outline:none;background:transparent;font-size:14px;width:100%;padding:6px 0}
-.btn{background:#28a6a6;color:#fff;padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:700;box-shadow:0 6px 18px rgba(40,166,166,.12)}
-
-/* small responsive */
-@media (max-width:420px){ .chat-wrap{width:96%;height:78vh} .avatar-wrap{width:88px;height:88px;border-radius:14px} .avatar-img{width:72px;height:72px;border-radius:10px} }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app" role="application" aria-label="Chatbot Casa Colima">
     <section class="chat-wrap" id="chatWrap">
       <header class="header">
-        <div class="avatar-wrap" aria-hidden="true">
-          <img id="avatarImg" class="avatar-img" src="assets/avatar.png" alt="Avatar - especialista Casa Colima">
+        <div class="avatar-wrap" id="avatarWrap" aria-hidden="true">
+          <!-- avatar.png + srcset para alta resolución (sube avatar@2x.png si lo tienes) -->
+          <img id="avatarImg" class="avatar-img"
+               src="assets/avatar.png"
+               srcset="assets/avatar@2x.png 2x"
+               alt="Avatar - especialista Casa Colima">
+          <!-- overlays para parpadeo y boca (controladas por JS/CSS) -->
+          <div class="eyelid" id="eyelid" aria-hidden="true"></div>
+          <div class="mouth" id="mouth" aria-hidden="true"></div>
         </div>
+
         <div class="meta">
           <div class="title">Casa Colima — Especialista</div>
           <div class="subtitle">Experto en salud mental y adicciones · 🤝 Empatía</div>
@@ -81,65 +38,6 @@ html,body{height:100%;margin:0;background:linear-gradient(180deg,#f3fbfb 0,#eaf6
     </section>
   </main>
 
-<script>
-/* Minimal JS to make the chat show initial content and avoid blank page issues */
-const msgs = document.getElementById('msgs');
-const input = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-
-function scrollBottom(){ msgs.scrollTop = msgs.scrollHeight; }
-
-function appendBot(html, opts = {}) {
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble bot';
-  bubble.innerHTML = html;
-  if (opts.reaction) { const r = document.createElement('span'); r.className='reaction-pop'; r.textContent = opts.reaction; bubble.appendChild(r); }
-  msgs.appendChild(bubble); scrollBottom();
-}
-function appendUser(text) {
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble user';
-  bubble.textContent = text;
-  msgs.appendChild(bubble); scrollBottom();
-}
-function showThinking(){
-  const wrap = document.createElement('div');
-  wrap.className = 'bot-row';
-  const thinking = document.createElement('div'); thinking.className = 'thinking-bubble';
-  const dots = document.createElement('span'); dots.className='dots'; dots.innerHTML = '<span></span><span></span><span></span>';
-  thinking.appendChild(dots); wrap.appendChild(thinking); msgs.appendChild(wrap); scrollBottom();
-  return wrap;
-}
-
-/* Start chat content */
-function startChat(){
-  appendBot('<strong>Hola — soy el especialista de Casa Colima.</strong><br>¿En qué te puedo ayudar hoy?');
-  const wrapper = document.createElement('div'); wrapper.style.marginTop='8px';
-  const chips = document.createElement('div'); chips.className='quick-options';
-  ['Problemas de adicción','Buscar apoyo','Contacto','Recursos inmediatos'].forEach(opt => {
-    const b = document.createElement('button'); b.className='chip'; b.textContent=opt;
-    b.onclick = ()=> { appendUser(opt); setTimeout(()=> appendBot('Gracias. Un momento mientras te doy más información...'),600); };
-    chips.appendChild(b);
-  });
-  wrapper.appendChild(chips); msgs.appendChild(wrapper); scrollBottom();
-}
-
-/* Basic send handling */
-sendBtn.addEventListener('click', ()=> {
-  const val = input.value.trim(); if(!val) return; appendUser(val); input.value=''; const thinking=showThinking();
-  setTimeout(()=> { thinking.remove(); appendBot('Entiendo. ¿Quieres que te envíe recursos o conecte con un especialista?',{reaction:'😊'}); }, 900 + Math.random()*600);
-});
-input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn.click(); } });
-
-/* ensure avatar exists, fallback if not */
-document.addEventListener('DOMContentLoaded', ()=> {
-  const img = document.getElementById('avatarImg');
-  img.addEventListener('error', ()=> {
-    console.warn('No se encontró assets/avatar.png — por favor verifica el archivo en assets/'); 
-    img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="100%" height="100%" fill="%23eaf6f5"/><circle cx="128" cy="96" r="60" fill="%23228a8a"/></svg>';
-  });
-  startChat();
-});
-</script>
+<script src="script.js" defer></script>
 </body>
 </html>
