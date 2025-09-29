@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chatbot Casa Colima — Especialista</title>
+<title>Chatbot Casa Colima</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,29 +11,35 @@
     <section class="chat-wrap" id="chatWrap">
       <header class="header">
         <div class="avatar-wrap" id="avatarWrap" aria-hidden="true">
-          <!-- avatar.png + srcset para alta resolución (sube avatar@2x.png si lo tienes) -->
           <img id="avatarImg" class="avatar-img"
                src="assets/avatar.png"
                srcset="assets/avatar@2x.png 2x"
-               alt="Avatar - especialista Casa Colima">
-          <!-- overlays para parpadeo y boca (controladas por JS/CSS) -->
-          <div class="eyelid" id="eyelid" aria-hidden="true"></div>
-          <div class="mouth" id="mouth" aria-hidden="true"></div>
+               alt="Avatar - especialista">
         </div>
-
-        <div class="meta">
-          <div class="title">Casa Colima — Especialista</div>
-          <div class="subtitle">Experto en salud mental y adicciones · 🤝 Empatía</div>
-        </div>
+        <!-- note: title/subtitle intentionally removed as requested -->
+        <div style="flex:1"></div>
       </header>
 
       <div class="messages" id="msgs" tabindex="0" aria-live="polite"></div>
+
+      <!-- Sugerencias area sits below messages, left aligned -->
+      <div class="suggestions-area" id="suggestionsArea">
+        <button id="suggestBtn" class="suggest-btn" aria-pressed="false" title="Mostrar sugerencias">
+          <span class="lib-emoji" aria-hidden="true">🧑‍🏫💬</span>
+          <span class="sugerir-text">Sugerencias</span>
+        </button>
+        <div id="suggestPanel" class="suggest-panel" aria-hidden="true">
+          <span class="happy-emoji" aria-hidden="true">😊</span>
+          <div class="suggest-content">te puedo sugerir palabras clave como: <strong>tratamiento, terapia, recaídas, consumo de sustancias, contacto</strong>, ...</div>
+        </div>
+      </div>
 
       <footer class="controls">
         <div class="input" role="search" aria-label="Escribe un mensaje">
           <input id="userInput" placeholder="Escribe un mensaje..." aria-label="Mensaje">
         </div>
         <button class="btn" id="sendBtn" aria-label="Enviar">Enviar</button>
+        <button class="btn secondary" id="resetBtn" aria-label="Reiniciar conversación">Reiniciar</button>
       </footer>
     </section>
   </main>
