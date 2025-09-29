@@ -1,32 +1,170 @@
-/* Contenedor del chat */
-.chat-container {
-  width: 400px;             /* un ancho fijo, no tan largo */
-  height: 550px;            /* altura moderada para que no se corte */
-  margin: 30px auto;
-  border: 1px solid #ccc;
-  border-radius: 15px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background-color: #f0f2f5;  /* tono gris clarito estilo WhatsApp */
-  background-image: url('assets/bg_pattern.png'); /* si tienes un patrón o puedes dejarlo vacío */
-  background-size: cover;
+/* style.css - Chatbot Casa Colima (bg fallback + crisp avatar + animations) */
+
+/* Base page */
+html,body{
+  height:100%;
+  margin:0;
+  background: linear-gradient(180deg,#f3fbfb 0,#eaf6f5 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+
+/* App container */
+.app{ width:100%; max-width:980px; display:flex; justify-content:center; align-items:center; }
+
+/* Chat container (less tall to avoid cut) */
+.chat-wrap{
+  width:420px;
+  height:600px;
+  border-radius:14px;
+  box-shadow:0 18px 50px rgba(10,10,10,.12);
+  background-color:#ffffff;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,.04);
+  position:relative;
+}
+
+/* HEADER */
+.header{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:12px;
+  border-bottom:1px solid rgba(0,0,0,.04);
+  background: linear-gradient(90deg, rgba(40,166,166,0.03), rgba(120,120,170,0.02));
+}
+
+/* AVATAR: bigger and crisp */
+.avatar-wrap{
+  width:112px;
+  height:112px;
+  border-radius:16px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(180deg, rgba(240,254,254,0.6), rgba(255,255,255,0.4));
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  position:relative;
+}
+
+/* image: use object-fit cover for no distortion; ensure crispness */
+.avatar-img{
+  width:96px;
+  height:96px;
+  border-radius:12px;
+  object-fit:cover;
+  display:block;
+  transition: transform .32s cubic-bezier(.2,.9,.2,1), filter .28s ease;
+  image-rendering: auto; /* avoid pixelated scaling */
+  -webkit-font-smoothing:antialiased;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* eyelid overlay (for blink) */
+.eyelid{
+  position:absolute;
+  left: calc(50% - 48px);
+  top: calc(50% - 48px);
+  width:96px;
+  height:0;
+  background: linear-gradient(180deg, rgba(250,250,250,0.0), rgba(230,230,230,0.98));
+  border-top-left-radius:12px;
+  border-top-right-radius:12px;
+  pointer-events:none;
+  transition:height .08s linear;
+  z-index:6;
+}
+
+/* mouth overlay (for smile indicator) */
+.mouth{
+  position:absolute;
+  left:50%;
+  bottom:18%;
+  transform:translateX(-50%);
+  width:44%;
+  height:8px;
+  border-radius:999px;
+  opacity:0;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.08);
+  transition:opacity .18s ease, transform .28s ease;
+  z-index:6;
+}
+
+/* header text */
+.title{ font-weight:700; color:#074c4c; }
+.subtitle{ font-size:12px; color:#6f7b7b; margin-top:4px; }
+
+/* MESSAGES area: use assets/bg_pattern.png if available, otherwise fallback SVG pattern */
+.messages{
+  flex:1;
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:auto;
+  background-color:#f7fbfb;
+  background-image:
+    url("assets/bg_pattern.png"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' fill-rule='evenodd'><rect width='120' height='120' fill='%23f7fbfb'/><path d='M10 10c6 6 20 6 26 0' stroke='%2328a6a6' stroke-opacity='0.06' stroke-width='2'/><circle cx='90' cy='20' r='1' fill='%23000000' fill-opacity='0.02'/></g></svg>");
   background-repeat: repeat;
+  background-size: 180px 180px, 120px 120px;
 }
 
-/* Header del chat con el avatar */
-.chat-header {
-  display: flex;
-  align-items: center;
-  padding: 10px;
-  background-color: #075e54; /* color tipo header WhatsApp */
-  color: #fff;
+/* bubble base */
+.bubble{
+  max-width:78%;
+  padding:10px 12px;
+  border-radius:16px;
+  line-height:1.35;
+  font-size:14px;
+  position:relative;
+  box-shadow:0 1px 0 rgba(0,0,0,.02);
+  opacity:0;
+  transform:translateY(6px) scale(.995);
+  animation:bubbleIn .24s forwards cubic-bezier(.2,.9,.2,1);
 }
+.bubble.bot{ align-self:flex-start; background:#f1fdfd; border-top-left-radius:6px; margin-left:6px; }
+.bubble.bot::after{ content:""; position:absolute; left:-6px; bottom:8px; width:12px; height:12px; background:#f1fdfd; transform:rotate(45deg); z-index:-1; border-bottom-left-radius:2px; border-top-right-radius:2px; }
+.bubble.user{ align-self:flex-end; background:#dcf8c6; border-top-right-radius:6px; margin-right:6px; }
+.bubble.user::after{ content:""; position:absolute; right:-6px; bottom:8px; width:12px; height:12px; background:#dcf8c6; transform:rotate(45deg); z-index:-1; border-bottom-right-radius:2px; border-top-left-radius:2px; }
 
-.chat-header img {
-  width: 60px;   /* avatar más grande */
-  height: 60px;
-  border-radius: 50%;
-  margin-right: 10px;
-  object-fit: cover;
+@keyframes bubbleIn{ from{opacity:0; transform:translateY(8px) scale(.985)} to{opacity:1; transform:translateY(0) scale(1)} }
+
+/* thinking */
+.thinking-bubble{ display:inline-flex; gap:8px; align-items:center; padding:8px 12px; border-radius:18px; background:#eef7f7; }
+.dots span{ display:inline-block; width:6px; height:6px; border-radius:50%; background:#6fb9b9; animation:dot 1s infinite; }
+.dots span:nth-child(2){ animation-delay:.12s; }
+.dots span:nth-child(3){ animation-delay:.24s; }
+@keyframes dot{ 0%{transform:translateY(0)} 50%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
+
+/* controls */
+.controls{ padding:10px; border-top:1px solid rgba(0,0,0,.04); display:flex; gap:10px; align-items:center; background:#fff; }
+.input{ flex:1; display:flex; gap:8px; align-items:center; background:#fbfffe; padding:8px; border-radius:999px; border:1px solid rgba(0,0,0,.04); }
+.input input{ border:0; outline:none; background:transparent; font-size:14px; width:100%; padding:6px 0; }
+.btn{ background:#28a6a6; color:#fff; padding:8px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:700; box-shadow:0 6px 18px rgba(40,166,166,.12); }
+
+/* Avatar idle animation (gentle bob) */
+@keyframes avatarBob {
+  0% { transform: translateY(0) }
+  50% { transform: translateY(-3px) }
+  100% { transform: translateY(0) }
+}
+.avatar-wrap.idle { animation: avatarBob 4.2s ease-in-out infinite; }
+
+/* subtle hover/active states */
+.avatar-wrap:hover .avatar-img { transform: translateY(-3px) scale(1.02); filter: saturate(1.03); }
+
+/* small responsive */
+@media (max-width:420px){
+  .chat-wrap{ width:96%; height:78vh; }
+  .avatar-wrap{ width:88px; height:88px; border-radius:12px }
+  .avatar-img{ width:72px; height:72px; border-radius:10px }
+  .messages{ padding:10px; gap:8px; }
 }
