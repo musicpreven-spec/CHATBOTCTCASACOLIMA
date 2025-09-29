@@ -9,28 +9,42 @@
 <body>
   <main class="app" role="application" aria-label="Chatbot Casa Colima">
     <section class="chat-wrap" id="chatWrap">
-      <header class="header">
-        <div class="avatar-wrap" id="avatarWrap" aria-hidden="true">
+
+      <!-- HEADER ahora es un bloque rectangular ocupado por la imagen -->
+      <header class="header header--big">
+        <div class="avatar-wrap avatar-wrap--full" id="avatarWrap" aria-hidden="true">
+          <!--
+            Para mejor nitidez:
+            - sube assets/avatar.png (1x)
+            - sube assets/avatar@2x.png (2x) idéntica pero doble resolución (ej. 1024x1024)
+            - opcional: assets/avatar@3x.png (3x)
+          -->
           <img id="avatarImg" class="avatar-img"
                src="assets/avatar.png"
-               srcset="assets/avatar@2x.png 2x"
+               srcset="assets/avatar@2x.png 2x, assets/avatar@3x.png 3x"
+               sizes="(max-width:420px) 100vw, 420px"
                alt="Avatar - especialista">
         </div>
-        <!-- note: title/subtitle intentionally removed as requested -->
-        <div style="flex:1"></div>
       </header>
 
       <div class="messages" id="msgs" tabindex="0" aria-live="polite"></div>
 
-      <!-- Sugerencias area sits below messages, left aligned -->
+      <!-- Sugerencias area (toggle) -->
       <div class="suggestions-area" id="suggestionsArea">
         <button id="suggestBtn" class="suggest-btn" aria-pressed="false" title="Mostrar sugerencias">
           <span class="lib-emoji" aria-hidden="true">🧑‍🏫💬</span>
           <span class="sugerir-text">Sugerencias</span>
         </button>
+
         <div id="suggestPanel" class="suggest-panel" aria-hidden="true">
           <span class="happy-emoji" aria-hidden="true">😊</span>
-          <div class="suggest-content">te puedo sugerir palabras clave como: <strong>tratamiento, terapia, recaídas, consumo de sustancias, contacto</strong>, ...</div>
+          <div class="suggest-content">
+            te puedo sugerir palabras clave como:
+            <strong id="suggestKeywords">tratamiento, terapia, recaídas, consumo de sustancias, contacto</strong>
+            <div class="suggest-chips" id="suggestChips">
+              <!-- chips generados por JS -->
+            </div>
+          </div>
         </div>
       </div>
 
