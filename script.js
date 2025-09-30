@@ -1,4 +1,4 @@
-/* script.js - Avatar full header + suggestions chips + keyword handling */
+/* script.js - maneja chat + suggestions + avatar thinking swap animado */
 
 /* DOM refs */
 const msgs = document.getElementById('msgs');
@@ -10,10 +10,10 @@ const suggestPanel = document.getElementById('suggestPanel');
 const suggestChips = document.getElementById('suggestChips');
 const avatarImg = document.getElementById('avatarImg');
 
-/* Default keywords (will appear as chips) */
+/* Palabras clave por defecto */
 const KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
 
-/* Helpers */
+/* ---------- UTIL: append/scroll ---------- */
 function scrollBottom(){ msgs.scrollTop = msgs.scrollHeight; }
 function clearMessages(){ msgs.innerHTML = ''; }
 function appendBot(html, opts = {}) {
@@ -31,7 +31,7 @@ function appendUser(text){
   msgs.appendChild(bubble);
   scrollBottom();
 }
-function showThinking(){
+function showThinkingBubble(){
   const wrap = document.createElement('div');
   wrap.className = 'bot-row';
   const thinking = document.createElement('div'); thinking.className = 'thinking-bubble';
@@ -40,7 +40,86 @@ function showThinking(){
   return wrap;
 }
 
-/* Build suggestion chips */
+/* ---------- AVATAR REACTION HELPERS ---------- */
+
+/*
+  reactWithImage(fileName, duration)
+  - fileName: 'avatar-thinking.png' (ruta relativa dentro de assets/, p.e. 'assets/avatar-thinking.png')
+  - duration: ms antes de restaurar (opcional, default 900)
+*/
+let _avatarRestoreTimer = null;
+function reactWithImage(fileName, duration = 900) {
+  if(!avatarImg) return;
+  // guarda estado actual
+  const originalSrc = avatarImg.currentSrc || avatarImg.src;
+  const originalSrcAttr = avatarImg.getAttribute('src');
+  const originalSrcset = avatarImg.getAttribute('srcset');
+
+  // intenta ruta absoluta relativa: si usuario puso 'avatar-thinking.png' permitimos ambas
+  const newSrc = fileName.startsWith('assets/') ? fileName : `assets/${fileName}`;
+
+  // animación cross-fade: bajar opacidad, cambiar src, pop
+  avatarImg.style.opacity = '0.14';
+  // limpia timer previo
+  if(_avatarRestoreTimer) { clearTimeout(_avatarRestoreTimer); _avatarRestoreTimer = null; }
+
+  setTimeout(() => {
+    // cambia src y quitamos cualquier transformación previa
+    avatarImg.src = newSrc;
+    // si existen versiones @2x o @3x y deseas usarlas, puedes añadir srcset aquí también:
+    // avatarImg.srcset = 'assets/avatar-thinking@2x.png 2x, assets/avatar-thinking@3x.png 3x';
+    // restart pop animation
+    avatarImg.classList.remove('avatar-react-pop');
+    void avatarImg.offsetWidth;
+    avatarImg.classList.add('avatar-react-pop');
+    avatarImg.style.opacity = '1';
+  }, 140);
+
+  // restaurar después de duration
+  _avatarRestoreTimer = setTimeout(() => {
+    // restore original attributes
+    if(originalSrcAttr) avatarImg.setAttribute('src', originalSrcAttr);
+    else avatarImg.src = originalSrc;
+    if(originalSrcset !== null) avatarImg.setAttribute('srcset', originalSrcset);
+    // remove pop class
+    avatarImg.classList.remove('avatar-react-pop');
+    _avatarRestoreTimer = null;
+  }, Math.max(700, duration));
+}
+
+/*
+  withThinkingImage(asyncFnOrDelay)
+  - Si pasas un número: se mostrará avatar-thinking por ese tiempo (ms).
+  - Si pasas una función que devuelve una Promise, mostrará avatar-thinking hasta que la promesa resuelva.
+  Ejemplo:
+    await withThinkingImage(1000); // muestra thinking por 1s
+    await withThinkingImage(() => fetch(...)); // muestra thinking hasta que termine fetch
+*/
+function withThinkingImage(workerOrMs = 900) {
+  const thinkingFile = 'assets/avatar-thinking.png';
+  if(typeof workerOrMs === 'number') {
+    return new Promise(resolve => {
+      reactWithImage(thinkingFile, workerOrMs);
+      setTimeout(resolve, workerOrMs+10);
+    });
+  } else if (typeof workerOrMs === 'function') {
+    // si la funcion retorna promesa, la esperamos
+    const result = workerOrMs();
+    if(result && typeof result.then === 'function') {
+      reactWithImage(thinkingFile, 2000); // fallback duration si tarda mucho
+      return result.finally(() => {
+        // restore ocurre en reactWithImage por timer; si deseas restaurar inmediatamente, se puede forzar aquí
+      });
+    } else {
+      // no promise -> tratarlo como delay ms si es number
+      return withThinkingImage(parseInt(workerOrMs,10) || 900);
+    }
+  } else {
+    return withThinkingImage(900);
+  }
+}
+
+/* ---------- SUGGESTIONS / CHIPS ---------- */
 function renderSuggestionChips(){
   suggestChips.innerHTML = '';
   KEYWORDS.forEach(k => {
@@ -48,15 +127,16 @@ function renderSuggestionChips(){
     chip.className = 'suggest-chip';
     chip.textContent = k;
     chip.addEventListener('click', ()=> {
-      // when user clicks a chip, act as if they sent that keyword
       appendUser(k);
-      handleKeyword(k);
+      // cuando el usuario clickea chip, muestra thinking image mientras procesamos
+      withThinkingImage(900).then(()=> {
+        handleKeyword(k);
+      });
     });
     suggestChips.appendChild(chip);
   });
 }
 
-/* Toggle suggestions panel */
 suggestBtn.addEventListener('click', ()=> {
   const shown = suggestPanel.classList.contains('show');
   if(shown){
@@ -65,45 +145,42 @@ suggestBtn.addEventListener('click', ()=> {
   } else {
     suggestPanel.classList.add('show');
     suggestBtn.setAttribute('aria-pressed','true');
-    // ensure chips present
     renderSuggestionChips();
   }
 });
 
-/* Keyword handler - aqui conectaremos el flujo real más adelante */
+/* ---------- KEYWORD HANDLING ---------- */
 function handleKeyword(keyword){
-  // placeholder: show thinking then route to the 'keyword process'
-  const thinking = showThinking();
-  setTimeout(()=> {
-    thinking.remove();
-    appendBot(`Recibí la palabra clave <strong>${keyword}</strong>. Te guío hacia recursos y pasos específicos sobre "${keyword}". (Flujo a desarrollar)`, { reaction: '🔎' });
-    // TODO: aquí puedes disparar navegación a la sección correspondiente o mostrar más opciones
-  }, 700 + Math.random()*400);
+  // aquí hacemos la reacción y la respuesta
+  // mostramos thinking image por 1s mientras "procesamos"
+  withThinkingImage(1000).then(()=> {
+    // respuesta posterior al "thinking"
+    appendBot(`Recibí la palabra clave <strong>${keyword}</strong>. Te guío hacia recursos y pasos específicos sobre "${keyword}".`, { reaction: '🔎' });
+    // TODO: aquí enlazar el flujo real del keyword
+  });
 }
 
-/* Send handling: if user types a known keyword, call handleKeyword */
+/* ---------- SEND / RESET ---------- */
 sendBtn.addEventListener('click', ()=> {
   const val = input.value.trim();
   if(!val) return;
   appendUser(val);
   input.value = '';
 
-  // check if matches a keyword (simple contains check, case-insensitive)
+  // si coincide con keyword: trigger reaction
   const matched = KEYWORDS.find(k => val.toLowerCase().includes(k.toLowerCase()));
   if(matched){
-    handleKeyword(matched);
+    // show thinking image and then handleKeyword
+    withThinkingImage(1000).then(()=> handleKeyword(matched));
     return;
   }
 
-  // else generic reply
-  const thinking = showThinking();
-  setTimeout(()=> {
-    thinking.remove();
+  // genérico: react with thinking then answer
+  withThinkingImage(900).then(()=> {
     appendBot('Entiendo. ¿Deseas buscar por palabras clave o prefieres que te conecte con un especialista?');
-  }, 700 + Math.random()*500);
+  });
 });
 
-/* Restart */
 resetBtn.addEventListener('click', ()=> {
   startConversation();
 });
@@ -111,18 +188,16 @@ resetBtn.addEventListener('click', ()=> {
 /* Enter key */
 input.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); }});
 
-/* Start conversation state */
+/* ---------- INITIAL CONVERSATION ---------- */
 function startConversation(){
   clearMessages();
   appendBot('<strong>Hola — ¿en qué te puedo ayudar hoy?</strong>');
-  // hide suggestions panel initially
   suggestPanel.classList.remove('show');
   suggestBtn.setAttribute('aria-pressed','false');
-  // render chips in background (but hidden)
   renderSuggestionChips();
 }
 
-/* Avatar crispness: log the source */
+/* ---------- Avatar load logs ---------- */
 avatarImg.addEventListener('load', ()=> console.log('[avatar] loaded', avatarImg.currentSrc));
 avatarImg.addEventListener('error', ()=> console.warn('[avatar] failed to load', avatarImg.src));
 
