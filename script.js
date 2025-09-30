@@ -1,4 +1,12 @@
-/* script.js - maneja chat + suggestions + avatar thinking swap animado */
+/* script.js - manejo de chat + keywords + avatar thinking/happy-bulb swaps */
+
+/* --- Config --- */
+const KEYWORDS = {
+  ramaA: ['hijo','hija','hermano','hermana','amigo','amiga','pareja','esposo','esposa','familiar','conocido','ayuda para alguien','apoyo para alguien'],
+  ramaB: ['quiero dejar','recaí','recaída','recaídas','necesito ayuda','no puedo controlar','consumo','cristal','droga','alcohol','marihuana','cocaína','adicción','dependiente','problema mío','estoy mal'],
+  ramaC: ['terapia','terapias','terapia individual','terapia grupal','consulta','psiquiatra','psiquiatría','tratamiento','tratamiento ambulatorio','tratamiento residencial','programa','recaídas','antidoping'],
+  ramaD: ['contacto','teléfono','tel','celular','número','dirección','ubicación','horario','correo','mail','cita','contacto rápido']
+};
 
 /* DOM refs */
 const msgs = document.getElementById('msgs');
@@ -10,26 +18,26 @@ const suggestPanel = document.getElementById('suggestPanel');
 const suggestChips = document.getElementById('suggestChips');
 const avatarImg = document.getElementById('avatarImg');
 
-/* Palabras clave por defecto */
-const KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
+/* Avatar files (nombres exactos en assets/) */
+const AVATAR_FILES = {
+  idle: 'assets/avatar.png',
+  thinking: 'assets/avatar-thinking.png',
+  happyBulb: 'assets/avatar-happy-bulb.png'
+};
 
-/* ---------- UTIL: append/scroll ---------- */
+/* ---------- Utils UI ---------- */
 function scrollBottom(){ msgs.scrollTop = msgs.scrollHeight; }
 function clearMessages(){ msgs.innerHTML = ''; }
 function appendBot(html, opts = {}) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble bot';
   bubble.innerHTML = html;
-  if (opts.reaction) { const r = document.createElement('span'); r.className='reaction-pop'; r.textContent = opts.reaction; bubble.appendChild(r); }
+  if(opts.reaction){ const r = document.createElement('span'); r.className='reaction-pop'; r.textContent = opts.reaction; bubble.appendChild(r); }
   msgs.appendChild(bubble);
   scrollBottom();
 }
 function appendUser(text){
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble user';
-  bubble.textContent = text;
-  msgs.appendChild(bubble);
-  scrollBottom();
+  const b = document.createElement('div'); b.className = 'bubble user'; b.textContent = text; msgs.appendChild(b); scrollBottom();
 }
 function showThinkingBubble(){
   const wrap = document.createElement('div');
@@ -40,166 +48,153 @@ function showThinkingBubble(){
   return wrap;
 }
 
-/* ---------- AVATAR REACTION HELPERS ---------- */
-
-/*
-  reactWithImage(fileName, duration)
-  - fileName: 'avatar-thinking.png' (ruta relativa dentro de assets/, p.e. 'assets/avatar-thinking.png')
-  - duration: ms antes de restaurar (opcional, default 900)
-*/
+/* ---------- Avatar reaction helpers ---------- */
 let _avatarRestoreTimer = null;
-function reactWithImage(fileName, duration = 900) {
+function setAvatarSrc(src) {
   if(!avatarImg) return;
-  // guarda estado actual
-  const originalSrc = avatarImg.currentSrc || avatarImg.src;
-  const originalSrcAttr = avatarImg.getAttribute('src');
-  const originalSrcset = avatarImg.getAttribute('srcset');
-
-  // intenta ruta absoluta relativa: si usuario puso 'avatar-thinking.png' permitimos ambas
-  const newSrc = fileName.startsWith('assets/') ? fileName : `assets/${fileName}`;
-
-  // animación cross-fade: bajar opacidad, cambiar src, pop
+  avatarImg.src = src;
+}
+function reactWithImage(filePath, duration = 900) {
+  if(!avatarImg) return Promise.resolve();
+  const origSrc = avatarImg.getAttribute('src') || avatarImg.src;
+  // crossfade
   avatarImg.style.opacity = '0.14';
-  // limpia timer previo
   if(_avatarRestoreTimer) { clearTimeout(_avatarRestoreTimer); _avatarRestoreTimer = null; }
-
-  setTimeout(() => {
-    // cambia src y quitamos cualquier transformación previa
-    avatarImg.src = newSrc;
-    // si existen versiones @2x o @3x y deseas usarlas, puedes añadir srcset aquí también:
-    // avatarImg.srcset = 'assets/avatar-thinking@2x.png 2x, assets/avatar-thinking@3x.png 3x';
-    // restart pop animation
-    avatarImg.classList.remove('avatar-react-pop');
-    void avatarImg.offsetWidth;
-    avatarImg.classList.add('avatar-react-pop');
-    avatarImg.style.opacity = '1';
-  }, 140);
-
-  // restaurar después de duration
-  _avatarRestoreTimer = setTimeout(() => {
-    // restore original attributes
-    if(originalSrcAttr) avatarImg.setAttribute('src', originalSrcAttr);
-    else avatarImg.src = originalSrc;
-    if(originalSrcset !== null) avatarImg.setAttribute('srcset', originalSrcset);
-    // remove pop class
-    avatarImg.classList.remove('avatar-react-pop');
-    _avatarRestoreTimer = null;
-  }, Math.max(700, duration));
+  return new Promise(resolve => {
+    setTimeout(()=> {
+      avatarImg.src = filePath;
+      avatarImg.classList.remove('avatar-react-pop');
+      void avatarImg.offsetWidth;
+      avatarImg.classList.add('avatar-react-pop');
+      avatarImg.style.opacity = '1';
+    }, 140);
+    _avatarRestoreTimer = setTimeout(()=> {
+      // restore
+      avatarImg.setAttribute('src', origSrc);
+      avatarImg.classList.remove('avatar-react-pop');
+      _avatarRestoreTimer = null;
+      resolve();
+    }, Math.max(700, duration));
+  });
 }
 
-/*
-  withThinkingImage(asyncFnOrDelay)
-  - Si pasas un número: se mostrará avatar-thinking por ese tiempo (ms).
-  - Si pasas una función que devuelve una Promise, mostrará avatar-thinking hasta que la promesa resuelva.
-  Ejemplo:
-    await withThinkingImage(1000); // muestra thinking por 1s
-    await withThinkingImage(() => fetch(...)); // muestra thinking hasta que termine fetch
-*/
+/* Helper that shows thinking image for ms or while promise runs */
 function withThinkingImage(workerOrMs = 900) {
-  const thinkingFile = 'assets/avatar-thinking.png';
+  const thinkingFile = AVATAR_FILES.thinking;
   if(typeof workerOrMs === 'number') {
-    return new Promise(resolve => {
-      reactWithImage(thinkingFile, workerOrMs);
-      setTimeout(resolve, workerOrMs+10);
-    });
-  } else if (typeof workerOrMs === 'function') {
-    // si la funcion retorna promesa, la esperamos
-    const result = workerOrMs();
-    if(result && typeof result.then === 'function') {
-      reactWithImage(thinkingFile, 2000); // fallback duration si tarda mucho
-      return result.finally(() => {
-        // restore ocurre en reactWithImage por timer; si deseas restaurar inmediatamente, se puede forzar aquí
-      });
+    return reactWithImage(thinkingFile, workerOrMs);
+  } else if(typeof workerOrMs === 'function') {
+    // assume returns promise
+    const res = workerOrMs();
+    if(res && typeof res.then === 'function') {
+      // show thinking while promise pending
+      reactWithImage(thinkingFile, 2000);
+      return res;
     } else {
-      // no promise -> tratarlo como delay ms si es number
-      return withThinkingImage(parseInt(workerOrMs,10) || 900);
+      return reactWithImage(thinkingFile, 900);
     }
   } else {
-    return withThinkingImage(900);
+    return reactWithImage(thinkingFile, 900);
   }
 }
 
-/* ---------- SUGGESTIONS / CHIPS ---------- */
+/* ---------- Suggestions chips ---------- */
+const DEFAULT_KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
 function renderSuggestionChips(){
+  if(!suggestChips) return;
   suggestChips.innerHTML = '';
-  KEYWORDS.forEach(k => {
+  DEFAULT_KEYWORDS.forEach(k => {
     const chip = document.createElement('button');
     chip.className = 'suggest-chip';
     chip.textContent = k;
-    chip.addEventListener('click', ()=> {
+    chip.addEventListener('click', ()=>{
       appendUser(k);
-      // cuando el usuario clickea chip, muestra thinking image mientras procesamos
-      withThinkingImage(900).then(()=> {
-        handleKeyword(k);
-      });
+      // show thinking, then handle
+      withThinkingImage(1000).then(()=> handleKeyword(k));
     });
     suggestChips.appendChild(chip);
   });
 }
 
-suggestBtn.addEventListener('click', ()=> {
-  const shown = suggestPanel.classList.contains('show');
-  if(shown){
-    suggestPanel.classList.remove('show');
-    suggestBtn.setAttribute('aria-pressed','false');
-  } else {
-    suggestPanel.classList.add('show');
-    suggestBtn.setAttribute('aria-pressed','true');
-    renderSuggestionChips();
-  }
-});
-
-/* ---------- KEYWORD HANDLING ---------- */
-function handleKeyword(keyword){
-  // aquí hacemos la reacción y la respuesta
-  // mostramos thinking image por 1s mientras "procesamos"
-  withThinkingImage(1000).then(()=> {
-    // respuesta posterior al "thinking"
-    appendBot(`Recibí la palabra clave <strong>${keyword}</strong>. Te guío hacia recursos y pasos específicos sobre "${keyword}".`, { reaction: '🔎' });
-    // TODO: aquí enlazar el flujo real del keyword
+/* suggestions toggle */
+if(suggestBtn){
+  suggestBtn.addEventListener('click', ()=> {
+    const shown = suggestPanel.classList.contains('show');
+    if(shown){ suggestPanel.classList.remove('show'); suggestBtn.setAttribute('aria-pressed','false'); }
+    else { suggestPanel.classList.add('show'); suggestBtn.setAttribute('aria-pressed','true'); renderSuggestionChips(); }
   });
 }
 
-/* ---------- SEND / RESET ---------- */
-sendBtn.addEventListener('click', ()=> {
-  const val = input.value.trim();
-  if(!val) return;
-  appendUser(val);
-  input.value = '';
-
-  // si coincide con keyword: trigger reaction
-  const matched = KEYWORDS.find(k => val.toLowerCase().includes(k.toLowerCase()));
-  if(matched){
-    // show thinking image and then handleKeyword
-    withThinkingImage(1000).then(()=> handleKeyword(matched));
-    return;
+/* ---------- Keyword detection ---------- */
+function findKeywordCategory(text) {
+  if(!text) return null;
+  const t = text.toLowerCase();
+  // check each category; return first match and its category name
+  for(const [cat, arr] of Object.entries(KEYWORDS)) {
+    for(const kw of arr) {
+      if(t.includes(kw.toLowerCase())) return cat;
+    }
   }
+  return null;
+}
 
-  // genérico: react with thinking then answer
-  withThinkingImage(900).then(()=> {
-    appendBot('Entiendo. ¿Deseas buscar por palabras clave o prefieres que te conecte con un especialista?');
+/* ---------- Flow handlers ---------- */
+function handleKeyword(keyword){
+  // Determine category
+  const cat = findKeywordCategory(keyword) || 'ramaC';
+  // Show happy-bulb reaction and then answer
+  reactWithImage(AVATAR_FILES.happyBulb, 900).then(()=>{
+    // respond according to category
+    if(cat === 'ramaA') {
+      appendBot('Gracias por contarme. Entiendo tu preocupación. ¿Deseas orientación para cómo hablar con esa persona o prefieres información sobre tratamientos?', { reaction:'💙' });
+      // here you could add quick reply buttons etc.
+    } else if(cat === 'ramaB') {
+      appendBot('Gracias por tu confianza. Puedo orientarte sobre opciones de apoyo: terapia individual, programas ambulatorios o tratamiento residencial. ¿Cuál te interesa?', { reaction:'🤝' });
+    } else if(cat === 'ramaC') {
+      appendBot('Tenemos terapias individuales y grupales, consultas psiquiátricas y programas especializados. ¿Quieres que te ayude a agendar una consulta?', { reaction:'🔎' });
+    } else { // ramaD or fallback
+      appendBot('Puedes comunicarte por teléfono, WhatsApp o llenar un formulario. ¿Qué prefieres?', { reaction:'📞' });
+    }
   });
-});
+}
 
-resetBtn.addEventListener('click', ()=> {
-  startConversation();
-});
+/* ---------- Send / Reset ---------- */
+if(sendBtn){
+  sendBtn.addEventListener('click', ()=> {
+    const val = input.value.trim();
+    if(!val) return;
+    appendUser(val);
+    input.value = '';
+    const matchedCat = findKeywordCategory(val);
+    if(matchedCat){
+      // show thinking while processing and then handle
+      withThinkingImage(1000).then(()=> handleKeyword(val));
+    } else {
+      // general reply path: thinking then generic ask
+      withThinkingImage(900).then(()=> appendBot('Entiendo. ¿Quieres que busque por palabras clave o que te conecte con un especialista?'));
+    }
+  });
+}
 
-/* Enter key */
+if(resetBtn){
+  resetBtn.addEventListener('click', ()=> startConversation());
+}
+
 input.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); }});
 
-/* ---------- INITIAL CONVERSATION ---------- */
+/* ---------- Start conversation ---------- */
 function startConversation(){
   clearMessages();
   appendBot('<strong>Hola — ¿en qué te puedo ayudar hoy?</strong>');
-  suggestPanel.classList.remove('show');
-  suggestBtn.setAttribute('aria-pressed','false');
+  if(suggestPanel) { suggestPanel.classList.remove('show'); suggestBtn.setAttribute('aria-pressed','false'); }
   renderSuggestionChips();
 }
 
-/* ---------- Avatar load logs ---------- */
-avatarImg.addEventListener('load', ()=> console.log('[avatar] loaded', avatarImg.currentSrc));
-avatarImg.addEventListener('error', ()=> console.warn('[avatar] failed to load', avatarImg.src));
+/* ---------- Avatar logs ---------- */
+if(avatarImg){
+  avatarImg.addEventListener('load', ()=> console.log('[avatar] loaded', avatarImg.currentSrc));
+  avatarImg.addEventListener('error', ()=> console.warn('[avatar] failed to load', avatarImg.src));
+}
 
 /* init */
 document.addEventListener('DOMContentLoaded', ()=> {
