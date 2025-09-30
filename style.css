@@ -128,3 +128,21 @@ html,body{
   .header--big{ height:120px; }
 }
 
+/* ---------- Avatar reaction / crossfade ---------- */
+
+/* transición para opacidad y transform (ya hay en avatar-img, pero dejamos refuerzo) */
+.avatar-img {
+  transition: opacity .22s ease, transform .28s ease;
+  will-change: opacity, transform;
+}
+
+/* clase para dar un pequeño "pop" cuando reacciona */
+.avatar-react-pop {
+  animation: reactPop .42s cubic-bezier(.2,.9,.2,1) forwards;
+}
+@keyframes reactPop {
+  0%   { transform: scale(1); opacity: 1; }
+  40%  { transform: scale(1.06) translateY(-4px); opacity: 0.98; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
