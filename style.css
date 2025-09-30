@@ -57,18 +57,20 @@ html,body{
   background: linear-gradient(180deg, rgba(240,254,254,0.65), rgba(255,255,255,0.35));
 }
 
-/* imagen ocupa todo el contenedor sin perder proporción */
-.avatar-img{
-  width:100%;
-  height:100%;
-  object-fit:cover;          /* importantísimo para que cubra y no distorsione */
-  display:block;
+/* imagen ocupa todo el contenedor mostrando todo el contenido */
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;     /* muestra toda la imagen sin recortarla */
+  display: block;
   image-rendering: auto;
-  -webkit-font-smoothing:antialiased;
+  -webkit-font-smoothing: antialiased;
   backface-visibility: hidden;
-  transform-origin:center center;
+  transform-origin: center center;
   transition: transform .28s ease;
+  background: linear-gradient(180deg, rgba(240,254,254,0.65), rgba(255,255,255,0.35));
 }
+
 
 /* Messages area (con patrón fallback si subiste bg_pattern.png) */
 .messages{
@@ -125,3 +127,4 @@ html,body{
   .chat-wrap{ width:96%; height:78vh; }
   .header--big{ height:120px; }
 }
+
