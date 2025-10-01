@@ -27,6 +27,7 @@
         </div>
       </header>
 
+      <!-- Mensajes --> 
       <div class="messages" id="msgs" tabindex="0" aria-live="polite"></div>
 
       <!-- Sugerencias area (toggle) -->
@@ -35,19 +36,21 @@
           <span class="lib-emoji" aria-hidden="true">🧑‍🏫💬</span>
           <span class="sugerir-text">Sugerencias</span>
         </button>
-
         <div id="suggestPanel" class="suggest-panel" aria-hidden="true">
           <span class="happy-emoji" aria-hidden="true">😊</span>
           <div class="suggest-content">
             te puedo sugerir palabras clave como:
             <strong id="suggestKeywords">tratamiento, terapia, recaídas, consumo de sustancias, contacto</strong>
-            <div class="suggest-chips" id="suggestChips">
-              <!-- chips generados por JS -->
-            </div>
+            <div class="suggest-chips" id="suggestChips"></div>
           </div>
         </div>
       </div>
+      
+      <!-- Quick replies area: aquí aparecerán botones de respuesta (Sí/No, opciones rápidas, CTA) -->
+      <div id="quickReplies" class="quick-replies" aria-hidden="true"></div>
 
+      <!-- Controles -->
+      
       <footer class="controls">
         <div class="input" role="search" aria-label="Escribe un mensaje">
           <input id="userInput" placeholder="Escribe un mensaje..." aria-label="Mensaje">
@@ -61,3 +64,4 @@
 <script src="script.js" defer></script>
 </body>
 </html>
+
