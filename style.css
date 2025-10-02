@@ -87,13 +87,17 @@ html,body{
   flex-direction:column;
   gap:10px;
   overflow:auto;
-  background-color:#f7fbfb;
+  background-color:#e6f9f9; /* tono claro tipo WhatsApp */
   background-image:
     url("assets/bg_pattern.png"),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' fill-rule='evenodd'><rect width='120' height='120' fill='%23f7fbfb'/><path d='M10 10c6 6 20 6 26 0' stroke='%2328a6a6' stroke-opacity='0.06' stroke-width='2'/><circle cx='90' cy='20' r='1' fill='%23000000' fill-opacity='0.02'/></g></svg>');
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' fill-rule='evenodd'><rect width='120' height='120' fill='%23e6f9f9'/><path d='M10 10c6 6 20 6 26 0' stroke='%2328a6a6' stroke-opacity='0.06' stroke-width='2'/><circle cx='90' cy='20' r='1' fill='%23000000' fill-opacity='0.02'/></g></svg>');
   background-repeat: repeat;
   background-size: 180px 180px, 120px 120px;
+  background-position: center top, 0 0;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
 }
+
 
 /* bubbles */
 .bubble{
@@ -162,3 +166,16 @@ html,body{
   .header--big{ height:120px; }
   .avatar-wrap--full{ padding:4px; }
 }
+
+/* Make sure typing indicator is visible and styled */
+.bot-row { 
+  display:block; 
+  width:100%; 
+  margin:6px 0; 
+}
+.thinking-bubble { 
+  opacity: 1 !important; 
+  color: #073637; 
+  box-shadow: none; 
+}
+
