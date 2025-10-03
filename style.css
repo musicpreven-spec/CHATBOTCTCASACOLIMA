@@ -79,7 +79,7 @@ html,body{
   background: linear-gradient(180deg, rgba(240,254,254,0.65), rgba(255,255,255,0.35));
 }
 
-/* .messages: fondo tipo WhatsApp con fallback SVG */
+/* ------------------ .messages: fondo tipo "WhatsApp" puro CSS ------------------ */
 .messages{
   flex:1;
   padding:12px 14px;
@@ -87,17 +87,18 @@ html,body{
   flex-direction:column;
   gap:10px;
   overflow:auto;
-  /* color base tipo whatsapp */
+
+  /* color base parecido a WhatsApp */
   background-color:#e6f9f9;
 
-  /* primero layer: bg_pattern.png (si existe)
-     segundo layer: SVG inline como fallback seguro */
+  /* patrón de burbujas solo con CSS: dos capas de radial-gradient para dar sensación de burbujas */
   background-image:
-    url("assets/bg_pattern.png"),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' fill-rule='evenodd'><rect width='120' height='120' fill='%23e6f9f9'/><path d='M10 10c6 6 20 6 26 0' stroke='%2328a6a6' stroke-opacity='0.06' stroke-width='2'/><circle cx='90' cy='20' r='1' fill='%23000000' fill-opacity='0.02'/></g></svg>');
-  background-repeat: repeat;
-  background-size: 180px 180px, 120px 120px;
-  background-position: center top, 0 0;
+    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.55) 0 6px, transparent 7px),
+    radial-gradient(circle at 70% 80%, rgba(255,255,255,0.45) 0 4px, transparent 6px);
+  background-size: 120px 120px, 180px 180px;
+  background-position: 0 0, 40px 40px;
+  background-repeat: repeat, repeat;
+
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
@@ -183,5 +184,6 @@ html,body{
   color: #073637; 
   box-shadow: none; 
 }
+
 
 
