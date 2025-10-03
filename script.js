@@ -480,26 +480,6 @@ function init(){
   startConversation();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // arranca la conversación como siempre
-  startConversation();
-
-  // RENDERIZA LOS CHIPS pero NO los muestra hasta que el usuario haga click en "Sugerencias".
-  // (esto mejora rendimiento y evita que el panel aparezca por defecto)
-  try {
-    if (typeof renderSuggestionChips === 'function') {
-      renderSuggestionChips(); // prepara los chips en memoria/DOM pero panel sigue oculto
-    }
-    // asegurarnos de que no se muestre el panel al inicio
-    if (suggestPanel) {
-      suggestPanel.classList.remove('show');
-      suggestBtn && suggestBtn.setAttribute('aria-pressed', 'false');
-    }
-  } catch (e) {
-    console.warn('No fue posible inicializar sugerencias sin mostrarlas:', e);
-  }
-});
-
 /* Sugerencias: renderizar chips solo al abrir y mantener panel oculto por defecto */
 function renderSuggestionChips(){
   if(!suggestChips) return;
@@ -548,6 +528,20 @@ if(suggestBtn && suggestPanel){
     }
   });
 }
+
+document.addEventListener('DOMContentLoaded', ()=> {
+  // iniciar conversación
+  startConversation();
+
+  // preparar chips en memoria (no mostrarlos)
+  try { renderSuggestionChips(); } catch(e){ /* noop */ }
+
+  // asegurar panel oculto
+  if(suggestPanel) {
+    suggestPanel.classList.remove('show');
+    suggestBtn && suggestBtn.setAttribute('aria-pressed','false');
+  }
+});
 
 
 
