@@ -486,4 +486,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* Sugerencias: toggle al hacer click (chips se renderizan pero panel oculto hasta click) */
+function renderSuggestionChips(){
+  if(!suggestChips) return;
+  suggestChips.innerHTML = '';
+  const DEFAULT_KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
+  DEFAULT_KEYWORDS.forEach(k => {
+    const chip = document.createElement('button');
+    chip.className = 'suggest-chip';
+    chip.textContent = k;
+    chip.addEventListener('click', ()=> {
+      appendUser(k);
+      showTyping(700).then(()=> handleKeyword(k));
+    });
+    suggestChips.appendChild(chip);
+  });
+}
+
+// Event listener para el botón Sugerencias: abre/cierra el panel (no muestre por defecto)
+if(suggestBtn && suggestPanel){
+  suggestBtn.addEventListener('click', ()=> {
+    const isShown = suggestPanel.classList.contains('show');
+    if(isShown){
+      suggestPanel.classList.remove('show');
+      suggestBtn.setAttribute('aria-pressed','false');
+    } else {
+      // renderizamos chips justo antes de mostrar para asegurar que estén actualizados
+      renderSuggestionChips();
+      suggestPanel.classList.add('show');
+      suggestBtn.setAttribute('aria-pressed','true');
+    }
+  });
+}
+
 
