@@ -97,28 +97,42 @@ function reactWithImage(filePath, duration = 900) {
 }
 function withThinkingImage(ms = 900) { return reactWithImage(AVATAR_FILES.thinking, ms); }
 
-/* ---------- Typing simulation helper (sync with avatar thinking) ---------- */
-/**
- * showTyping(ms)
- * - displays the three-dot typing bubble for ms milliseconds
- * - simultaneously triggers withThinkingImage(ms) so avatar switches to thinking
- * - returns a Promise which resolves after ms
- */
+/* ---------- Typing helper: crea y muestra los puntitos y sincroniza avatar-thinking ---------- */
+function createThinkingElement() {
+  const wrap = document.createElement('div');
+  wrap.className = 'bot-row';
+  const thinking = document.createElement('div');
+  thinking.className = 'thinking-bubble';
+  const dots = document.createElement('span');
+  dots.className = 'dots';
+  dots.innerHTML = '<span></span><span></span><span></span>';
+  thinking.appendChild(dots);
+  wrap.appendChild(thinking);
+  return wrap;
+}
+
+let _typingTimer = null;
 function showTyping(ms = 800) {
   return new Promise(resolve => {
-    // create and append typing element
+    if(!msgs) { resolve(); return; }
+    // Si ya hay un typing visible, limpiarlo antes
+    const existing = msgs.querySelector('.bot-row');
+    if(existing) existing.remove();
+
     const typingEl = createThinkingElement();
     msgs.appendChild(typingEl);
-    scrollBottom();
+    msgs.scrollTop = msgs.scrollHeight;
 
-    // start avatar thinking in parallel (if asset exists it will change)
-    const avatarPromise = withThinkingImage(ms);
+    // opcional: sincronizar avatar-thinking si existe reactWithImage
+    if(typeof reactWithImage === 'function' && window.AVATAR_FILES && AVATAR_FILES.thinking) {
+      // disparar pero no bloquear: reactWithImage maneja restauración con timeout
+      try { reactWithImage(AVATAR_FILES.thinking, ms); } catch(e) { /* noop */ }
+    }
 
-    // remove typing bubble after ms, but wait a tiny bit to ensure smoothness
-    setTimeout(()=> {
+    clearTimeout(_typingTimer);
+    _typingTimer = setTimeout(() => {
       typingEl.remove();
-      // resolve after avatarPromise finishes or after ms (whichever later)
-      avatarPromise.finally(() => resolve());
+      resolve();
     }, ms);
   });
 }
@@ -486,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* Sugerencias: toggle al hacer click (chips se renderizan pero panel oculto hasta click) */
+/* Sugerencias: renderizar chips solo al abrir y mantener panel oculto por defecto */
 function renderSuggestionChips(){
   if(!suggestChips) return;
   suggestChips.innerHTML = '';
@@ -503,6 +517,22 @@ function renderSuggestionChips(){
   });
 }
 
+if(suggestBtn && suggestPanel){
+  suggestBtn.addEventListener('click', ()=> {
+    const isShown = suggestPanel.classList.contains('show');
+    if(isShown){
+      suggestPanel.classList.remove('show');
+      suggestBtn.setAttribute('aria-pressed','false');
+    } else {
+      // renderizamos chips justo antes de mostrar (evita que estén visibles sin querer)
+      renderSuggestionChips();
+      suggestPanel.classList.add('show');
+      suggestBtn.setAttribute('aria-pressed','true');
+    }
+  });
+}
+
+
 // Event listener para el botón Sugerencias: abre/cierra el panel (no muestre por defecto)
 if(suggestBtn && suggestPanel){
   suggestBtn.addEventListener('click', ()=> {
@@ -518,5 +548,6 @@ if(suggestBtn && suggestPanel){
     }
   });
 }
+
 
 
