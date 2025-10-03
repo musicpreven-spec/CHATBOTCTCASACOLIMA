@@ -185,5 +185,13 @@ html,body{
   box-shadow: none; 
 }
 
+/* -------------- Typing indicator y mejora de contraste -------------- */
+.bot-row { display:block; width:100%; margin:6px 0; }
+.thinking-bubble { opacity: 1 !important; color: #073637; box-shadow: none; background:#eef7f7; border-radius:18px; padding:8px 12px; display:inline-flex; align-items:center; }
+.thinking-bubble .dots span { width:8px; height:8px; border-radius:50%; background:#0b8f8f; display:inline-block; margin-right:6px; animation:dot 1s infinite; }
+.thinking-bubble .dots span:nth-child(2){ animation-delay:.12s; }
+.thinking-bubble .dots span:nth-child(3){ animation-delay:.24s; }
+@keyframes dot{ 0%{transform:translateY(0)} 50%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
+
 
 
