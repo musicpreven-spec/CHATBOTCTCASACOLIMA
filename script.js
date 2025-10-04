@@ -1,17 +1,11 @@
-/* script.updated.js - Chatbot Casa Colima (flujo de diagnóstico psiquiátrico integrado)
-   - Este archivo reemplaza al script.js original. Mantiene todo el flujo previo
-     y añade las preguntas solicitadas por Emanuel:
-     Después de preguntar por síntomas emocionales -> preguntar: "¿cuentas con algún diagnóstico?"
-       - si Sí -> preguntar "¿cuál es tu diagnóstico?" con una lista amplia de diagnósticos
-       - si No -> preguntar "¿gustas agendar una cita para consulta psiquiátrica?" (Sí/No)
-           - si Sí -> mostrar CTAs existentes (agendar, llamar, whatsapp, llenar formulario)
-
-   Nota: He conservado las funciones, nombres de variables y CTAs existentes para
-   minimizar cambios en el resto de la aplicación. Sólo sustituir este archivo
-   por el script anterior.
+/* script.updated.js - Chatbot Casa Colima (flujo completo con sugerencias integradas)
+   - Incluye integración de AVATAR_FILES
+   - Renderizado de chips de sugerencias usando KEYWORDS + sugerencias por defecto
+   - Al hacer clic en una sugerencia se la trata como si el usuario la hubiera escrito: se muestra como mensaje de usuario y se dispara handleKeyword()
+   - Conserva el resto del flujo (consumo, frecuencia, diagnóstico, CTAs)
 */
 
-/* ---------- Config / Keywords (sin cambios) ---------- */
+/* ---------- Config / Keywords ---------- */
 const KEYWORDS = {
   ramaA: ['hijo','hija','hermano','hermana','amigo','amiga','pareja','esposo','esposa','familiar','conocido','ayuda para alguien','apoyo para alguien'],
   ramaB: ['quiero dejar','recaí','recaída','recaídas','necesito ayuda','no puedo controlar','consumo','cristal','droga','alcohol','marihuana','cocaína','adicción','dependiente','problema mío','estoy mal'],
@@ -19,6 +13,7 @@ const KEYWORDS = {
   ramaD: ['contacto','teléfono','tel','celular','número','dirección','ubicación','horario','correo','mail','cita','contacto rápido']
 };
 
+/* AVATAR FILES */
 const AVATAR_FILES = {
   idle: 'assets/avatar.png',
   thinking: 'assets/avatar-thinking.png',
@@ -46,7 +41,7 @@ const state = {
   diagnosis: null    // diagnosis string
 };
 
-/* ---------- UI helpers (sin cambios) ---------- */
+/* ---------- UI helpers ---------- */
 function scrollBottom(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }
 function clearMessages(){ if(msgs) msgs.innerHTML = ''; }
 function appendBot(html, opts = {}) {
@@ -86,18 +81,14 @@ let _avatarRestoreTimer = null;
 function reactWithImage(filePath, duration = 900) {
   if(!avatarImg) return Promise.resolve();
   const origSrc = avatarImg.getAttribute('src') || avatarImg.src;
-  avatarImg.style.opacity = '0.14';
+  try { avatarImg.style.opacity = '0.14'; } catch(e){}
   if(_avatarRestoreTimer) { clearTimeout(_avatarRestoreTimer); _avatarRestoreTimer = null; }
   return new Promise(resolve => {
     setTimeout(()=> {
-      avatarImg.src = filePath;
-      avatarImg.classList.remove('avatar-react-pop');
-      void avatarImg.offsetWidth;
-      avatarImg.classList.add('avatar-react-pop');
-      avatarImg.style.opacity = '1';
+      try { avatarImg.src = filePath; avatarImg.classList.remove('avatar-react-pop'); void avatarImg.offsetWidth; avatarImg.classList.add('avatar-react-pop'); avatarImg.style.opacity = '1'; } catch(e){}
     }, 120);
     _avatarRestoreTimer = setTimeout(()=> {
-      if(origSrc) avatarImg.setAttribute('src', origSrc);
+      if(origSrc) try { avatarImg.setAttribute('src', origSrc); } catch(e){}
       avatarImg.classList.remove('avatar-react-pop');
       _avatarRestoreTimer = null;
       resolve();
@@ -111,6 +102,7 @@ let _typingTimer = null;
 function showTyping(ms = 800) {
   return new Promise(resolve => {
     if(!msgs) { resolve(); return; }
+    // remove existing typing
     const existing = msgs.querySelector('.bot-row');
     if(existing) existing.remove();
 
@@ -118,7 +110,8 @@ function showTyping(ms = 800) {
     msgs.appendChild(typingEl);
     msgs.scrollTop = msgs.scrollHeight;
 
-    if(typeof reactWithImage === 'function' && window.AVATAR_FILES && AVATAR_FILES.thinking) {
+    // sincronizar avatar-thinking si existe
+    if(typeof reactWithImage === 'function' && AVATAR_FILES && AVATAR_FILES.thinking) {
       try { reactWithImage(AVATAR_FILES.thinking, ms); } catch(e) { /* noop */ }
     }
 
@@ -130,31 +123,50 @@ function showTyping(ms = 800) {
   });
 }
 
-/* ---------- Suggestions chips (existing) ---------- */
+/* ---------- Suggestions chips (integradas con KEYWORDS) ---------- */
 const DEFAULT_KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
 function renderSuggestionChips(){
   if(!suggestChips) return;
+  // crear conjunto único de sugerencias: default + keywords flatten
+  const keywordList = [].concat(...Object.values(KEYWORDS));
+  const candidates = Array.from(new Set(DEFAULT_KEYWORDS.concat(keywordList).map(k => k.toString())));
+  // opcional: limitar a 12 items para no saturar la UI
+  const toShow = candidates.slice(0, 12);
   suggestChips.innerHTML = '';
-  DEFAULT_KEYWORDS.forEach(k => {
+  toShow.forEach(k => {
     const chip = document.createElement('button');
     chip.className = 'suggest-chip';
     chip.textContent = k;
     chip.addEventListener('click', ()=>{
+      // cerrar panel justo después de hacer click
+      if(suggestPanel) { suggestPanel.classList.remove('show'); suggestBtn && suggestBtn.setAttribute('aria-pressed','false'); }
+      // mostrar como mensaje de usuario
       appendUser(k);
-      showTyping(900).then(()=> handleKeyword(k));
+      // limpiar quickReplies (evita solapamiento visual)
+      if(quickReplies) quickReplies.innerHTML = '';
+      // simular typing y manejar el keyword (fallback a ramaC)
+      showTyping(700).then(()=> handleKeyword(k));
     });
     suggestChips.appendChild(chip);
   });
 }
+
 if(suggestBtn){
   suggestBtn.addEventListener('click', ()=> {
-    const shown = suggestPanel.classList.contains('show');
-    if(shown){ suggestPanel.classList.remove('show'); suggestBtn.setAttribute('aria-pressed','false'); }
-    else { suggestPanel.classList.add('show'); suggestBtn.setAttribute('aria-pressed','true'); renderSuggestionChips(); }
+    const shown = suggestPanel && suggestPanel.classList.contains('show');
+    if(shown){
+      suggestPanel.classList.remove('show');
+      suggestBtn.setAttribute('aria-pressed','false');
+    } else {
+      // renderizar chips antes de mostrar (se actualiza con KEYWORDS actuales)
+      try { renderSuggestionChips(); } catch(e){}
+      suggestPanel && suggestPanel.classList.add('show');
+      suggestBtn.setAttribute('aria-pressed','true');
+    }
   });
 }
 
-/* ---------- Quick replies helpers (sin cambios) ---------- */
+/* ---------- Quick replies helpers ---------- */
 function showQuickReplies(buttons = []) {
   if(!quickReplies) return;
   quickReplies.innerHTML = '';
@@ -169,7 +181,7 @@ function showQuickReplies(buttons = []) {
   });
 }
 
-/* ---------- Multi-select UI for substances (sin cambios) ---------- */
+/* ---------- Multi-select UI for substances ---------- */
 function showMultiSelect(options = [], onDone) {
   if(!quickReplies) return;
   quickReplies.innerHTML = '';
@@ -211,7 +223,7 @@ function showMultiSelect(options = [], onDone) {
   quickReplies.appendChild(actions);
 }
 
-/* ---------- Keyword detection helper (sin cambios) ---------- */
+/* ---------- Keyword detection helper ---------- */
 function findKeywordCategory(text) {
   if(!text) return null;
   const t = text.toLowerCase();
@@ -223,7 +235,7 @@ function findKeywordCategory(text) {
   return null;
 }
 
-/* ---------- Flow: questionnaire (modificado) ---------- */
+/* ---------- Flow: questionnaire (async/await) ---------- */
 
 /* Start */
 async function startConversation(){
@@ -243,7 +255,7 @@ async function startConversation(){
 /* small utility delay */
 function delay(ms){ return new Promise(res => setTimeout(res, ms)); }
 
-/* Q1: consumes? (sin cambios) */
+/* Q1: consumes? */
 async function askQuestionConsume(){
   await showTyping(800);
   appendBot('Para orientarte mejor: ¿Consumes alcohol u otras sustancias actualmente?');
@@ -266,7 +278,7 @@ function answerConsume(value){
   }
 }
 
-/* Q1a: substances multi-select for self (sin cambios) */
+/* Q1a: substances multi-select for self */
 async function askSubstancesSelf(){
   await showTyping(700);
   appendBot('Indica cuál(es) sustancia(s) consumes (puedes seleccionar una o varias):');
@@ -282,7 +294,7 @@ async function askSubstancesSelf(){
   });
 }
 
-/* Frequency question for self (sin cambios) */
+/* Frequency question for self */
 async function askFrequencySelf(){
   await showTyping(650);
   appendBot('¿Cómo describirías tu patrón de consumo? Elige la que mejor aplique:');
@@ -300,7 +312,7 @@ function answerFrequency(val){
   setTimeout(()=> askQuestionEmotional(), 300);
 }
 
-/* Q: who is it for when user said No (third-party flow) (sin cambios) */
+/* Q: who is it for when user said No (third-party flow) */
 async function askWhoIsIt(){
   await showTyping(600);
   appendBot('¿Es para un familiar, un amigo o un conocido?');
@@ -317,7 +329,7 @@ function answerWho(kind){
   setTimeout(()=> askSubstancesThirdParty(kind), 300);
 }
 
-/* Multi-select for third party (sin cambios) */
+/* Multi-select for third party */
 async function askSubstancesThirdParty(kind){
   await showTyping(700);
   appendBot(`¿Qué sustancias consume la persona (${kind})? Selecciona una o varias:`);
@@ -350,8 +362,7 @@ function answerFrequencyThird(val){
   setTimeout(()=> askQuestionEmotional(), 300);
 }
 
-/* Question about emotional symptoms (for self or third-party) (sin cambios funcionales)
-   -> MODIFICADO: ahora tras responder se dirigirá a la pregunta de diagnóstico */
+/* Question about emotional symptoms (for self or third-party) */
 async function askQuestionEmotional(){
   await showTyping(700);
   appendBot('¿Has notado signos de ansiedad, depresión u otros problemas emocionales que te preocupen? (si es para otra persona, responde según lo que observas)');
@@ -364,11 +375,11 @@ function answerEmotional(val){
   state.emotional = val;
   showQuickReplies([]);
   appendUser(val ? 'Sí' : 'No');
-  // en lugar de ir directamente a postQuestionFlow, preguntar por diagnóstico
+  // ahora preguntar por diagnóstico
   setTimeout(()=> askDiagnosisQuestion(), 350);
 }
 
-/* ---------- NUEVO: Flujo de diagnóstico ---------- */
+/* ---------- Flujo de diagnóstico ---------- */
 async function askDiagnosisQuestion(){
   await showTyping(700);
   appendBot('¿Cuentas con algún diagnóstico psiquiátrico o de salud mental?');
@@ -390,9 +401,9 @@ function answerHasDiagnosis(val){
 
 async function askWhichDiagnosis(){
   await showTyping(700);
-  appendBot('¿Cuál es tu diagnóstico? Selecciona la opción que corresponda (si no está, elige "Otro").');
+  appendBot('¿Cuál es tu diagnóstico? Selecciona la opción que corresponda (si no está, elige "Otros").');
   const diagnoses = [
-    'TDA', // trastorno por déficit de atención (adulto/niño)
+    'TDA',
     'TDAH',
     'TLP (trastorno límite de la personalidad)',
     'TAG (trastorno de ansiedad generalizada)',
@@ -413,10 +424,16 @@ async function askWhichDiagnosis(){
 }
 
 function answerWhichDiagnosis(diagnosis){
+  if(diagnosis === 'Otros'){
+    // si quieres campo libre, puedes mostrar un input en el DOM (opcional)
+    appendUser('Otros');
+    state.diagnosis = 'Otros';
+    setTimeout(()=> postQuestionFlow(), 300);
+    return;
+  }
   state.diagnosis = diagnosis;
   showQuickReplies([]);
   appendUser(diagnosis);
-  // reconocer y luego continuar con el flujo general
   setTimeout(async ()=>{
     await showTyping(800);
     appendBot(`Gracias por compartir tu diagnóstico: <strong>${diagnosis}</strong>. Esto nos ayuda a recomendar el mejor tipo de valoración y tratamiento.`);
@@ -450,7 +467,7 @@ function answerSchedulePsychiatric(val){
   }
 }
 
-/* After questionnaire: tailored reply + CTA (sin cambios, pero ahora considera state.diagnosis) */
+/* After questionnaire: tailored reply + CTA */
 async function postQuestionFlow(){
   await showTyping(900);
   let whoText = (state.subject === 'self') ? 'tú' : `la persona (${state.subject.type})`;
@@ -472,7 +489,7 @@ async function postQuestionFlow(){
   ]);
 }
 
-/* CTA actions (sin cambios) */
+/* CTA actions */
 function ctaAction(action){
   showQuickReplies([]);
   if(action === 'agendar'){
@@ -490,7 +507,7 @@ function ctaAction(action){
   }
 }
 
-/* Keyword fallback handling (sin cambios) */
+/* Keyword fallback handling */
 function handleKeyword(keyword){
   const cat = findKeywordCategory(keyword) || 'ramaC';
   showTyping(900).then(()=> {
@@ -513,7 +530,7 @@ function handleKeyword(keyword){
   });
 }
 
-/* Send / Reset handlers (sin cambios) */
+/* Send / Reset handlers */
 if(sendBtn){
   sendBtn.addEventListener('click', ()=> {
     const val = input.value.trim();
@@ -537,7 +554,7 @@ if(resetBtn){
 
 input.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); }});
 
-/* Utilities (sin cambios) */
+/* Utilities */
 function _labelForFrequency(key){
   switch(key){
     case 'recreativo': return 'Recreativo (ocasional)';
@@ -548,7 +565,7 @@ function _labelForFrequency(key){
   }
 }
 
-/* Init (sin cambios) */
+/* Init */
 function init(){
   if(avatarImg){
     avatarImg.addEventListener('load', ()=> console.log('[avatar] loaded', avatarImg.currentSrc));
@@ -557,37 +574,7 @@ function init(){
   startConversation();
 }
 
-/* Sugerencias: renderizar chips solo al abrir y mantener panel oculto por defecto (sin cambios) */
-function renderSuggestionChips(){
-  if(!suggestChips) return;
-  suggestChips.innerHTML = '';
-  const DEFAULT_KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
-  DEFAULT_KEYWORDS.forEach(k => {
-    const chip = document.createElement('button');
-    chip.className = 'suggest-chip';
-    chip.textContent = k;
-    chip.addEventListener('click', ()=> {
-      appendUser(k);
-      showTyping(700).then(()=> handleKeyword(k));
-    });
-    suggestChips.appendChild(chip);
-  });
-}
-
-if(suggestBtn && suggestPanel){
-  suggestBtn.addEventListener('click', ()=> {
-    const isShown = suggestPanel.classList.contains('show');
-    if(isShown){
-      suggestPanel.classList.remove('show');
-      suggestBtn.setAttribute('aria-pressed','false');
-    } else {
-      renderSuggestionChips();
-      suggestPanel.classList.add('show');
-      suggestBtn.setAttribute('aria-pressed','true');
-    }
-  });
-}
-
+/* Document ready: iniciar y preparar chips */
 document.addEventListener('DOMContentLoaded', ()=> {
   // iniciar conversación
   startConversation();
