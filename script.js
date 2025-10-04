@@ -314,4 +314,76 @@ function postQuestionFlow(){
     const substancesText = state.substances.length?state.substances.join(', '):'sustancias no especificadas';
     const freqLabel = state.frequency?_labelForFrequency(state.frequency):'patrón no especificado';
     const emotionalText = state.emotional?'síntomas emocionales presentes':'sin síntomas emocionales reportados';
-    const diagnosisText = state.diagnosis?`,
+    const diagnosisText = state.diagnosis?`, diagnóstico: ${state.diagnosis}`:'';
+    appendBot(`Resumen de información:\n- Persona: ${whoText}\n- Sustancias: ${substancesText}\n- Frecuencia: ${freqLabel}\n- Estado emocional: ${emotionalText}${diagnosisText}\n\nPodemos orientarte sobre terapias, tratamientos y apoyo.`);
+    showQuickReplies([
+      {text:'📅 Agendar cita', className:'positive', onClick:()=>ctaAction('agendar')},
+      {text:'📞 Llamar', className:'negative', onClick:()=>ctaAction('llamar')},
+      {text:'💬 WhatsApp', onClick:()=>ctaAction('whatsapp')}
+    ]);
+  });
+}
+
+/* ---------- CTA actions ---------- */
+function ctaAction(action){
+  showQuickReplies([]);
+  if(action==='agendar'){ appendBot('Te llevamos a la página de agendamiento'); window.open('https://tu-sitio-agenda.example.com','_blank'); }
+  else if(action==='llamar'){ appendBot('Número: +52 55 1234 5678'); window.location.href='tel:+525512345678'; }
+  else if(action==='whatsapp'){ appendBot('Conectando a WhatsApp...'); window.open('https://wa.me/52XXXXXXXXXXX','_blank'); }
+}
+
+/* ---------- Utility ---------- */
+function _labelForFrequency(freq){
+  if(freq==='recreativo') return 'Recreativo (ocasional)';
+  if(freq==='frecuente') return 'Consumo frecuente / diario';
+  if(freq==='dependencia') return 'Posible dependencia';
+  if(freq==='adicto') return 'Creo que ya soy adicto';
+  return freq;
+}
+
+/* ---------- Send / Reset handlers ---------- */
+if(sendBtn){
+  sendBtn.addEventListener('click', ()=>{
+    const val = (input && input.value)? input.value.trim():'';
+    if(!val) return;
+    appendUser(val);
+    if(input) input.value='';
+    const cat = findKeywordCategory(val);
+    if(cat) showTyping(900).then(()=> handleKeyword(val));
+    else showTyping(900).then(()=> appendBot('Gracias. Puedes seleccionar una opción o escribir una palabra clave.'));
+  });
+}
+if(resetBtn) resetBtn.addEventListener('click', ()=> startConversation());
+if(input) input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn && sendBtn.click(); }});
+
+/* ---------- Suggestions ---------- */
+const DEFAULT_KEYWORDS=['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
+function renderSuggestionChips(){
+  if(!suggestChips) return;
+  const keywordList=[].concat(...Object.values(KEYWORDS));
+  const candidates=Array.from(new Set(DEFAULT_KEYWORDS.concat(keywordList).map(k=>k.toString())));
+  const toShow=candidates.slice(0,12);
+  suggestChips.innerHTML='';
+  toShow.forEach(k=>{
+    const chip=document.createElement('button');
+    chip.className='suggest-chip';
+    chip.textContent=k;
+    chip.addEventListener('click', ()=>{ appendUser(k); showTyping(700).then(()=> handleKeyword(k)); });
+    suggestChips.appendChild(chip);
+  });
+}
+
+/* ---------- Init ---------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderSuggestionChips();
+  startConversation();
+  if(suggestBtn && suggestPanel){
+    suggestBtn.addEventListener('click', ()=>{
+      const shown=suggestPanel.classList.contains('show');
+      if(shown){ suggestPanel.classList.remove('show'); suggestBtn.setAttribute('aria-pressed','false'); }
+      else { renderSuggestionChips(); suggestPanel.classList.add('show'); suggestBtn.setAttribute('aria-pressed','true'); }
+    });
+    suggestPanel.classList.remove('show');
+    suggestBtn && suggestBtn.setAttribute('aria-pressed','false');
+  }
+});
