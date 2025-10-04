@@ -139,6 +139,26 @@ html,body{
 .qr-btn.negative{ background:#fff; color:#0b5161; border:1px solid rgba(11,81,97,0.12); }
 .qr-btn.small{ padding:6px 10px; font-size:13px; }
 
+/* añadir a style.css */
+.quick-replies{
+  padding:10px 14px;
+  border-top:1px solid rgba(0,0,0,.02);
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  background:transparent;
+  align-items:center;
+  justify-content:flex-start;
+
+  /* nueva regla: limitar alto y permitir scroll si hay muchas opciones */
+  max-height:170px;
+  overflow:auto;
+  padding-right:6px; /* espacio para el scrollbar */
+}
+.quick-replies::-webkit-scrollbar{ height:8px; }
+.quick-replies::-webkit-scrollbar-thumb{ background:rgba(11,143,143,0.12); border-radius:8px; }
+.qr-btn{ white-space:normal; text-align:center; }
+
 /* selected state for multi-select chips */
 .qr-btn.selected{ background:#0b8f8f; color:#fff; border-color: rgba(0,0,0,0.06); }
 
@@ -192,6 +212,7 @@ html,body{
 .thinking-bubble .dots span:nth-child(2){ animation-delay:.12s; }
 .thinking-bubble .dots span:nth-child(3){ animation-delay:.24s; }
 @keyframes dot{ 0%{transform:translateY(0)} 50%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
+
 
 
 
