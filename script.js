@@ -130,13 +130,14 @@ function renderSuggestionChips(){
   // crear conjunto único de sugerencias: default + keywords flatten
   const keywordList = [].concat(...Object.values(KEYWORDS));
   const candidates = Array.from(new Set(DEFAULT_KEYWORDS.concat(keywordList).map(k => k.toString())));
-  // opcional: limitar a 12 items para no saturar la UI
   const toShow = candidates.slice(0, 12);
   suggestChips.innerHTML = '';
   toShow.forEach(k => {
     const chip = document.createElement('button');
     chip.className = 'suggest-chip';
     chip.textContent = k;
+    chip.setAttribute('role','button');
+    chip.setAttribute('aria-pressed','false');
     chip.addEventListener('click', ()=>{
       // cerrar panel justo después de hacer click
       if(suggestPanel) { suggestPanel.classList.remove('show'); suggestBtn && suggestBtn.setAttribute('aria-pressed','false'); }
@@ -147,6 +148,8 @@ function renderSuggestionChips(){
       // simular typing y manejar el keyword (fallback a ramaC)
       showTyping(700).then(()=> handleKeyword(k));
     });
+    // accesibilidad teclado
+    chip.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); } });
     suggestChips.appendChild(chip);
   });
 }
@@ -195,9 +198,15 @@ function showMultiSelect(options = [], onDone) {
     btn.className = 'qr-btn small';
     btn.textContent = opt;
     btn.dataset.value = opt;
+    btn.setAttribute('role','button');
+    btn.setAttribute('aria-pressed','false');
     btn.addEventListener('click', ()=> {
+      const selected = btn.getAttribute('aria-pressed') === 'true';
+      btn.setAttribute('aria-pressed', (!selected).toString());
       btn.classList.toggle('selected');
     });
+    // accesibilidad teclado
+    btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
     container.appendChild(btn);
   });
   const actions = document.createElement('div');
@@ -205,6 +214,7 @@ function showMultiSelect(options = [], onDone) {
   const cont = document.createElement('button');
   cont.className = 'qr-btn positive';
   cont.textContent = 'Continuar';
+  cont.setAttribute('role','button');
   cont.addEventListener('click', ()=> {
     const selected = Array.from(container.querySelectorAll('.qr-btn.selected')).map(n => n.dataset.value);
     onDone(selected);
@@ -212,6 +222,7 @@ function showMultiSelect(options = [], onDone) {
   const back = document.createElement('button');
   back.className = 'qr-btn negative';
   back.textContent = 'Volver';
+  back.setAttribute('role','button');
   back.addEventListener('click', ()=> {
     quickReplies.innerHTML = '';
     quickReplies.setAttribute('aria-hidden','true');
@@ -380,16 +391,34 @@ function answerEmotional(val){
 }
 
 /* ---------- Flujo de diagnóstico ---------- */
-async function askDiagnosisQuestion(){
-  await showTyping(700);
-  appendBot('¿Cuentas con algún diagnóstico psiquiátrico o de salud mental?');
-  showQuickReplies([
-    { text: 'Sí', className: 'positive', onClick: ()=> answerHasDiagnosis(true) },
-    { text: 'No', className: 'negative', onClick: ()=> answerHasDiagnosis(false) }
-  ]);
+function showQuickReplies(buttons = []) {
+  if(!quickReplies) return;
+  quickReplies.innerHTML = '';
+  if(!buttons || !buttons.length) { quickReplies.setAttribute('aria-hidden','true'); return; }
+  quickReplies.setAttribute('aria-hidden','false');
+
+  buttons.forEach((b, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'qr-btn ' + (b.className || '');
+    btn.textContent = b.text;
+    btn.setAttribute('role','button');
+    btn.setAttribute('aria-pressed','false');
+    // accesibilidad: permitir activar con Enter / Space
+    btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
+
+    btn.addEventListener('click', () => {
+      // actualizar estado aria-pressed visualmente para feedback
+      // si es un botón de tipo positive/negative tratamos como "single action" y lo marcamos true temporalmente
+      const currently = btn.getAttribute('aria-pressed') === 'true';
+      // toggle for visual consistency
+      btn.setAttribute('aria-pressed', (!currently).toString());
+      b.onClick && b.onClick();
+    });
+    quickReplies.appendChild(btn);
+  });
 }
 
-function answerHasDiagnosis(val){
+/* ---------- Multi-select UI for substances ---------- */(val){
   showQuickReplies([]);
   appendUser(val ? 'Sí' : 'No');
   if(val){
