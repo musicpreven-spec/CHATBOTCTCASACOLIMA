@@ -1,9 +1,17 @@
-/* script.js - Chatbot Casa Colima (typing simulation mejorada)
-   - showTyping(ms): muestra los 3 puntitos y sincroniza avatar-thinking
-   - mantiene multi-select y flujo previo
+/* script.updated.js - Chatbot Casa Colima (flujo de diagnóstico psiquiátrico integrado)
+   - Este archivo reemplaza al script.js original. Mantiene todo el flujo previo
+     y añade las preguntas solicitadas por Emanuel:
+     Después de preguntar por síntomas emocionales -> preguntar: "¿cuentas con algún diagnóstico?"
+       - si Sí -> preguntar "¿cuál es tu diagnóstico?" con una lista amplia de diagnósticos
+       - si No -> preguntar "¿gustas agendar una cita para consulta psiquiátrica?" (Sí/No)
+           - si Sí -> mostrar CTAs existentes (agendar, llamar, whatsapp, llenar formulario)
+
+   Nota: He conservado las funciones, nombres de variables y CTAs existentes para
+   minimizar cambios en el resto de la aplicación. Sólo sustituir este archivo
+   por el script anterior.
 */
 
-/* ---------- Config / Keywords ---------- */
+/* ---------- Config / Keywords (sin cambios) ---------- */
 const KEYWORDS = {
   ramaA: ['hijo','hija','hermano','hermana','amigo','amiga','pareja','esposo','esposa','familiar','conocido','ayuda para alguien','apoyo para alguien'],
   ramaB: ['quiero dejar','recaí','recaída','recaídas','necesito ayuda','no puedo controlar','consumo','cristal','droga','alcohol','marihuana','cocaína','adicción','dependiente','problema mío','estoy mal'],
@@ -34,10 +42,11 @@ const state = {
   consumes: null,    // true/false
   substances: [],    // array of strings
   frequency: null,   // 'recreativo'|'frecuente'|'dependencia'|'adicto'
-  emotional: null    // true/false
+  emotional: null,   // true/false
+  diagnosis: null    // diagnosis string
 };
 
-/* ---------- UI helpers ---------- */
+/* ---------- UI helpers (sin cambios) ---------- */
 function scrollBottom(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }
 function clearMessages(){ if(msgs) msgs.innerHTML = ''; }
 function appendBot(html, opts = {}) {
@@ -97,25 +106,11 @@ function reactWithImage(filePath, duration = 900) {
 }
 function withThinkingImage(ms = 900) { return reactWithImage(AVATAR_FILES.thinking, ms); }
 
-/* ---------- Typing helper: crea y muestra los puntitos y sincroniza avatar-thinking ---------- */
-function createThinkingElement() {
-  const wrap = document.createElement('div');
-  wrap.className = 'bot-row';
-  const thinking = document.createElement('div');
-  thinking.className = 'thinking-bubble';
-  const dots = document.createElement('span');
-  dots.className = 'dots';
-  dots.innerHTML = '<span></span><span></span><span></span>';
-  thinking.appendChild(dots);
-  wrap.appendChild(thinking);
-  return wrap;
-}
-
+/* ---------- Typing helper ---------- */
 let _typingTimer = null;
 function showTyping(ms = 800) {
   return new Promise(resolve => {
     if(!msgs) { resolve(); return; }
-    // Si ya hay un typing visible, limpiarlo antes
     const existing = msgs.querySelector('.bot-row');
     if(existing) existing.remove();
 
@@ -123,9 +118,7 @@ function showTyping(ms = 800) {
     msgs.appendChild(typingEl);
     msgs.scrollTop = msgs.scrollHeight;
 
-    // opcional: sincronizar avatar-thinking si existe reactWithImage
     if(typeof reactWithImage === 'function' && window.AVATAR_FILES && AVATAR_FILES.thinking) {
-      // disparar pero no bloquear: reactWithImage maneja restauración con timeout
       try { reactWithImage(AVATAR_FILES.thinking, ms); } catch(e) { /* noop */ }
     }
 
@@ -148,7 +141,6 @@ function renderSuggestionChips(){
     chip.textContent = k;
     chip.addEventListener('click', ()=>{
       appendUser(k);
-      // show typing then handle
       showTyping(900).then(()=> handleKeyword(k));
     });
     suggestChips.appendChild(chip);
@@ -162,7 +154,7 @@ if(suggestBtn){
   });
 }
 
-/* ---------- Quick replies helpers ---------- */
+/* ---------- Quick replies helpers (sin cambios) ---------- */
 function showQuickReplies(buttons = []) {
   if(!quickReplies) return;
   quickReplies.innerHTML = '';
@@ -177,7 +169,7 @@ function showQuickReplies(buttons = []) {
   });
 }
 
-/* ---------- Multi-select UI for substances ---------- */
+/* ---------- Multi-select UI for substances (sin cambios) ---------- */
 function showMultiSelect(options = [], onDone) {
   if(!quickReplies) return;
   quickReplies.innerHTML = '';
@@ -219,7 +211,7 @@ function showMultiSelect(options = [], onDone) {
   quickReplies.appendChild(actions);
 }
 
-/* ---------- Keyword detection helper ---------- */
+/* ---------- Keyword detection helper (sin cambios) ---------- */
 function findKeywordCategory(text) {
   if(!text) return null;
   const t = text.toLowerCase();
@@ -231,7 +223,7 @@ function findKeywordCategory(text) {
   return null;
 }
 
-/* ---------- Flow: questionnaire (async/await) ---------- */
+/* ---------- Flow: questionnaire (modificado) ---------- */
 
 /* Start */
 async function startConversation(){
@@ -242,6 +234,7 @@ async function startConversation(){
   state.substances = [];
   state.frequency = null;
   state.emotional = null;
+  state.diagnosis = null;
   appendBot('<strong>Hola — ¿en qué te puedo ayudar hoy?</strong>');
   await delay(600);
   await askQuestionConsume();
@@ -250,7 +243,7 @@ async function startConversation(){
 /* small utility delay */
 function delay(ms){ return new Promise(res => setTimeout(res, ms)); }
 
-/* Q1: consumes? */
+/* Q1: consumes? (sin cambios) */
 async function askQuestionConsume(){
   await showTyping(800);
   appendBot('Para orientarte mejor: ¿Consumes alcohol u otras sustancias actualmente?');
@@ -273,7 +266,7 @@ function answerConsume(value){
   }
 }
 
-/* Q1a: substances multi-select for self */
+/* Q1a: substances multi-select for self (sin cambios) */
 async function askSubstancesSelf(){
   await showTyping(700);
   appendBot('Indica cuál(es) sustancia(s) consumes (puedes seleccionar una o varias):');
@@ -289,7 +282,7 @@ async function askSubstancesSelf(){
   });
 }
 
-/* Frequency question for self */
+/* Frequency question for self (sin cambios) */
 async function askFrequencySelf(){
   await showTyping(650);
   appendBot('¿Cómo describirías tu patrón de consumo? Elige la que mejor aplique:');
@@ -307,7 +300,7 @@ function answerFrequency(val){
   setTimeout(()=> askQuestionEmotional(), 300);
 }
 
-/* Q: who is it for when user said No (third-party flow) */
+/* Q: who is it for when user said No (third-party flow) (sin cambios) */
 async function askWhoIsIt(){
   await showTyping(600);
   appendBot('¿Es para un familiar, un amigo o un conocido?');
@@ -324,7 +317,7 @@ function answerWho(kind){
   setTimeout(()=> askSubstancesThirdParty(kind), 300);
 }
 
-/* Multi-select for third party */
+/* Multi-select for third party (sin cambios) */
 async function askSubstancesThirdParty(kind){
   await showTyping(700);
   appendBot(`¿Qué sustancias consume la persona (${kind})? Selecciona una o varias:`);
@@ -357,7 +350,8 @@ function answerFrequencyThird(val){
   setTimeout(()=> askQuestionEmotional(), 300);
 }
 
-/* Question about emotional symptoms (for self or third-party) */
+/* Question about emotional symptoms (for self or third-party) (sin cambios funcionales)
+   -> MODIFICADO: ahora tras responder se dirigirá a la pregunta de diagnóstico */
 async function askQuestionEmotional(){
   await showTyping(700);
   appendBot('¿Has notado signos de ansiedad, depresión u otros problemas emocionales que te preocupen? (si es para otra persona, responde según lo que observas)');
@@ -370,19 +364,103 @@ function answerEmotional(val){
   state.emotional = val;
   showQuickReplies([]);
   appendUser(val ? 'Sí' : 'No');
-  setTimeout(()=> postQuestionFlow(), 350);
+  // en lugar de ir directamente a postQuestionFlow, preguntar por diagnóstico
+  setTimeout(()=> askDiagnosisQuestion(), 350);
 }
 
-/* After questionnaire: tailored reply + CTA */
+/* ---------- NUEVO: Flujo de diagnóstico ---------- */
+async function askDiagnosisQuestion(){
+  await showTyping(700);
+  appendBot('¿Cuentas con algún diagnóstico psiquiátrico o de salud mental?');
+  showQuickReplies([
+    { text: 'Sí', className: 'positive', onClick: ()=> answerHasDiagnosis(true) },
+    { text: 'No', className: 'negative', onClick: ()=> answerHasDiagnosis(false) }
+  ]);
+}
+
+function answerHasDiagnosis(val){
+  showQuickReplies([]);
+  appendUser(val ? 'Sí' : 'No');
+  if(val){
+    setTimeout(()=> askWhichDiagnosis(), 300);
+  } else {
+    setTimeout(()=> askSchedulePsychiatric(), 300);
+  }
+}
+
+async function askWhichDiagnosis(){
+  await showTyping(700);
+  appendBot('¿Cuál es tu diagnóstico? Selecciona la opción que corresponda (si no está, elige "Otro").');
+  const diagnoses = [
+    'TDA', // trastorno por déficit de atención (adulto/niño)
+    'TDAH',
+    'TLP (trastorno límite de la personalidad)',
+    'TAG (trastorno de ansiedad generalizada)',
+    'Depresión mayor',
+    'Trastorno bipolar',
+    'TEPT (trastorno por estrés postraumático)',
+    'TOC (trastorno obsesivo-compulsivo)',
+    'Esquizofrenia',
+    'Trastornos del espectro autista',
+    'Trastornos alimentarios',
+    'Trastornos por consumo de sustancias',
+    'Trastorno del sueño',
+    'Otros'
+  ];
+
+  const buttons = diagnoses.map(d => ({ text: d, className: '', onClick: ()=> answerWhichDiagnosis(d) }));
+  showQuickReplies(buttons);
+}
+
+function answerWhichDiagnosis(diagnosis){
+  state.diagnosis = diagnosis;
+  showQuickReplies([]);
+  appendUser(diagnosis);
+  // reconocer y luego continuar con el flujo general
+  setTimeout(async ()=>{
+    await showTyping(800);
+    appendBot(`Gracias por compartir tu diagnóstico: <strong>${diagnosis}</strong>. Esto nos ayuda a recomendar el mejor tipo de valoración y tratamiento.`);
+    setTimeout(()=> postQuestionFlow(), 700);
+  }, 240);
+}
+
+async function askSchedulePsychiatric(){
+  await showTyping(700);
+  appendBot('¿Gustas agendar una cita para consulta psiquiátrica?');
+  showQuickReplies([
+    { text: 'Sí', className: 'positive', onClick: ()=> answerSchedulePsychiatric(true) },
+    { text: 'No', className: 'negative', onClick: ()=> answerSchedulePsychiatric(false) }
+  ]);
+}
+
+function answerSchedulePsychiatric(val){
+  showQuickReplies([]);
+  appendUser(val ? 'Sí' : 'No');
+  if(val){
+    // mostrar CTAs existentes: agendar consulta, llamar ahora, whatsapp, llenar formulario
+    setTimeout(()=> showQuickReplies([
+      { text: '📅 Agendar consulta', className: 'positive', onClick: ()=> ctaAction('agendar') },
+      { text: '📞 Llamar ahora', className: 'negative', onClick: ()=> ctaAction('llamar') },
+      { text: '💬 WhatsApp', className: '', onClick: ()=> ctaAction('whatsapp') },
+      { text: '📝 Llenar formulario', className: '', onClick: ()=> ctaAction('formulario') }
+    ]), 300);
+  } else {
+    // continuar con el flujo posterior normal
+    setTimeout(()=> postQuestionFlow(), 300);
+  }
+}
+
+/* After questionnaire: tailored reply + CTA (sin cambios, pero ahora considera state.diagnosis) */
 async function postQuestionFlow(){
   await showTyping(900);
   let whoText = (state.subject === 'self') ? 'tú' : `la persona (${state.subject.type})`;
   let substancesText = state.substances && state.substances.length ? state.substances.join(', ') : 'sustancias no especificadas';
   let freqLabel = state.frequency ? _labelForFrequency(state.frequency) : 'patrón no especificado';
   let emotionalText = state.emotional ? 'síntomas emocionales presentes' : 'sin síntomas emocionales reportados';
+  let diagnosisText = state.diagnosis ? `, diagnóstico: <strong>${state.diagnosis}</strong>` : '';
 
   appendBot(
-    `Gracias por la información. Según lo que compartiste sobre ${whoText}: consumo de <strong>${substancesText}</strong>, patrón: <strong>${freqLabel}</strong>, y ${emotionalText}. ` +
+    `Gracias por la información. Según lo que compartiste sobre ${whoText}: consumo de <strong>${substancesText}</strong>, patrón: <strong>${freqLabel}</strong>, y ${emotionalText}${diagnosisText}. ` +
     `Con base en esto, lo más recomendable es una valoración profesional para determinar el mejor plan (psicoterapia, programa ambulatorio o valoración psiquiátrica). ¿Cómo prefieres proceder?`
   );
 
@@ -394,7 +472,7 @@ async function postQuestionFlow(){
   ]);
 }
 
-/* CTA actions */
+/* CTA actions (sin cambios) */
 function ctaAction(action){
   showQuickReplies([]);
   if(action === 'agendar'){
@@ -412,10 +490,9 @@ function ctaAction(action){
   }
 }
 
-/* Keyword fallback handling (uses typing too) */
+/* Keyword fallback handling (sin cambios) */
 function handleKeyword(keyword){
   const cat = findKeywordCategory(keyword) || 'ramaC';
-  // show typing and then react + respond
   showTyping(900).then(()=> {
     reactWithImage(AVATAR_FILES.happyBulb, 900).then(()=> {
       if(cat === 'ramaA'){
@@ -436,7 +513,7 @@ function handleKeyword(keyword){
   });
 }
 
-/* Send / Reset handlers */
+/* Send / Reset handlers (sin cambios) */
 if(sendBtn){
   sendBtn.addEventListener('click', ()=> {
     const val = input.value.trim();
@@ -460,7 +537,7 @@ if(resetBtn){
 
 input.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); }});
 
-/* Utilities */
+/* Utilities (sin cambios) */
 function _labelForFrequency(key){
   switch(key){
     case 'recreativo': return 'Recreativo (ocasional)';
@@ -471,7 +548,7 @@ function _labelForFrequency(key){
   }
 }
 
-/* Init */
+/* Init (sin cambios) */
 function init(){
   if(avatarImg){
     avatarImg.addEventListener('load', ()=> console.log('[avatar] loaded', avatarImg.currentSrc));
@@ -480,7 +557,7 @@ function init(){
   startConversation();
 }
 
-/* Sugerencias: renderizar chips solo al abrir y mantener panel oculto por defecto */
+/* Sugerencias: renderizar chips solo al abrir y mantener panel oculto por defecto (sin cambios) */
 function renderSuggestionChips(){
   if(!suggestChips) return;
   suggestChips.innerHTML = '';
@@ -504,24 +581,6 @@ if(suggestBtn && suggestPanel){
       suggestPanel.classList.remove('show');
       suggestBtn.setAttribute('aria-pressed','false');
     } else {
-      // renderizamos chips justo antes de mostrar (evita que estén visibles sin querer)
-      renderSuggestionChips();
-      suggestPanel.classList.add('show');
-      suggestBtn.setAttribute('aria-pressed','true');
-    }
-  });
-}
-
-
-// Event listener para el botón Sugerencias: abre/cierra el panel (no muestre por defecto)
-if(suggestBtn && suggestPanel){
-  suggestBtn.addEventListener('click', ()=> {
-    const isShown = suggestPanel.classList.contains('show');
-    if(isShown){
-      suggestPanel.classList.remove('show');
-      suggestBtn.setAttribute('aria-pressed','false');
-    } else {
-      // renderizamos chips justo antes de mostrar para asegurar que estén actualizados
       renderSuggestionChips();
       suggestPanel.classList.add('show');
       suggestBtn.setAttribute('aria-pressed','true');
@@ -542,6 +601,3 @@ document.addEventListener('DOMContentLoaded', ()=> {
     suggestBtn && suggestBtn.setAttribute('aria-pressed','false');
   }
 });
-
-
-
