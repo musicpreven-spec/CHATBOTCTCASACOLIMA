@@ -1,6 +1,4 @@
-/* script.js - versión corregida y consolidada para Chatbot Casa Colima
-   Reemplaza completamente tu script.js con esto.
-*/
+/* script.js - Versión completa y corregida para Chatbot Casa Colima */
 
 /* ---------- Config / Keywords ---------- */
 const KEYWORDS = {
@@ -118,23 +116,6 @@ function showTyping(ms = 800){
   });
 }
 
-/* ---------- Suggestions ---------- */
-const DEFAULT_KEYWORDS = ['tratamiento','terapia','recaídas','consumo de sustancias','contacto'];
-function renderSuggestionChips(){
-  if(!suggestChips) return;
-  const keywordList = [].concat(...Object.values(KEYWORDS));
-  const candidates = Array.from(new Set(DEFAULT_KEYWORDS.concat(keywordList).map(k => k.toString())));
-  const toShow = candidates.slice(0, 12);
-  suggestChips.innerHTML = '';
-  toShow.forEach(k=>{
-    const chip = document.createElement('button');
-    chip.className = 'suggest-chip';
-    chip.textContent = k;
-    chip.addEventListener('click', ()=>{ appendUser(k); showTyping(700).then(()=> handleKeyword(k)); });
-    suggestChips.appendChild(chip);
-  });
-}
-
 /* ---------- Quick replies ---------- */
 function showQuickReplies(buttons = []){
   if(!quickReplies) return;
@@ -150,90 +131,187 @@ function showQuickReplies(buttons = []){
   });
 }
 
+/* Multi-select for substances */
+function showMultiSelect(options = [], onDone){
+  if(!quickReplies) return;
+  quickReplies.innerHTML = '';
+  quickReplies.setAttribute('aria-hidden','false');
+  const container = document.createElement('div');
+  container.style.display='flex'; container.style.flexWrap='wrap'; container.style.gap='8px';
+  options.forEach(opt=>{
+    const btn = document.createElement('button');
+    btn.className='qr-btn small';
+    btn.textContent=opt;
+    btn.dataset.value=opt;
+    btn.addEventListener('click', ()=>{
+      const selected = btn.getAttribute('aria-pressed')==='true';
+      btn.setAttribute('aria-pressed',(!selected).toString());
+      btn.classList.toggle('selected');
+    });
+    container.appendChild(btn);
+  });
+  const actions = document.createElement('div'); actions.style.marginTop='8px';
+  const cont = document.createElement('button'); cont.className='qr-btn positive'; cont.textContent='Continuar';
+  cont.addEventListener('click', ()=>{
+    const selected = Array.from(container.querySelectorAll('.qr-btn.selected')).map(n=>n.dataset.value);
+    onDone(selected);
+  });
+  actions.appendChild(cont);
+  quickReplies.appendChild(container); quickReplies.appendChild(actions);
+}
+
 /* ---------- Keyword detection ---------- */
 function findKeywordCategory(text){
   if(!text) return null;
-  const t = text.toLowerCase();
+  const t=text.toLowerCase();
   for(const [cat, arr] of Object.entries(KEYWORDS)){
-    for(const kw of arr){
-      if(t.includes(kw.toLowerCase())) return cat;
-    }
+    for(const kw of arr) if(t.includes(kw.toLowerCase())) return cat;
   }
   return null;
 }
 
-/* ---------- Main conversation flow ---------- */
+/* ---------- Flow de conversación completo ---------- */
 async function startConversation(){
   clearMessages();
-  state.subject = 'self'; state.consumes = null; state.substances = []; state.frequency = null; state.emotional = null; state.diagnosis = null;
+  Object.assign(state,{subject:'self', consumes:null, substances:[], frequency:null, emotional:null, diagnosis:null});
   appendBot('<strong>Hola — ¿en qué te puedo ayudar hoy?</strong>');
   await delay(600);
   askQuestionConsume();
 }
-function delay(ms){ return new Promise(res => setTimeout(res, ms)); }
+function delay(ms){ return new Promise(res=>setTimeout(res,ms)); }
 
-/* Q1 consume */
 function askQuestionConsume(){
   showTyping(800).then(()=>{
     appendBot('¿Consumes alcohol u otras sustancias actualmente?');
     showQuickReplies([
-      { text: 'Sí', className: 'positive', onClick: ()=> answerConsume(true) },
-      { text: 'No', className: 'negative', onClick: ()=> answerConsume(false) }
+      { text: 'Sí', className:'positive', onClick:()=>answerConsume(true) },
+      { text: 'No', className:'negative', onClick:()=>answerConsume(false) }
     ]);
   });
 }
-function answerConsume(val){ state.consumes = val; appendUser(val ? 'Sí':'No'); showQuickReplies([]); }
-
-/* ---------- Keyword response ---------- */
-function handleKeyword(keyword){
-  const cat = findKeywordCategory(keyword) || 'ramaC';
-  showTyping(900).then(()=> reactWithImage(AVATAR_FILES.happyBulb,900).then(()=>{
-    if(cat === 'ramaA') appendBot('Buscas ayuda para otra persona. ¿Quieres orientación o información sobre tratamientos?');
-    else if(cat === 'ramaB') appendBot('Gracias por compartir. Podemos explorar opciones de apoyo y tratamiento.');
-    else if(cat === 'ramaC') appendBot('Ofrecemos terapia individual, grupal y consultas psiquiátricas.');
-    else appendBot('Te puedo dar teléfono, WhatsApp o un formulario para más información.');
-    showQuickReplies([
-      { text: '📅 Agendar', className: 'positive', onClick: ()=> ctaAction('agendar') },
-      { text: '💬 WhatsApp', className: '', onClick: ()=> ctaAction('whatsapp') },
-      { text: '📞 Llamar', className: 'negative', onClick: ()=> ctaAction('llamar') }
-    ]);
-  }));
+function answerConsume(val){
+  state.consumes=val;
+  appendUser(val?'Sí':'No'); showQuickReplies([]);
+  if(val) askSubstancesSelf();
+  else askWhoIsIt();
 }
 
-/* CTA actions */
-function ctaAction(action){
-  showQuickReplies([]);
-  if(action==='agendar') { appendBot('Te llevamos a la página de agendamiento'); window.open('https://tu-sitio-agenda.example.com','_blank'); }
-  else if(action==='llamar') { appendBot('Número: +52 55 1234 5678'); window.location.href='tel:+525512345678'; }
-  else if(action==='whatsapp'){ appendBot('Conectando a WhatsApp...'); window.open('https://wa.me/52XXXXXXXXXXX','_blank'); }
-}
-
-/* Send / Reset handlers */
-if(sendBtn){
-  sendBtn.addEventListener('click', ()=>{
-    const val = (input && input.value)? input.value.trim():'';
-    if(!val) return;
-    appendUser(val);
-    if(input) input.value='';
-    const cat = findKeywordCategory(val);
-    if(cat) showTyping(900).then(()=> handleKeyword(val));
-    else showTyping(900).then(()=> appendBot('Gracias. Puedes seleccionar una opción o escribir una palabra clave.'));
-  });
-}
-if(resetBtn) resetBtn.addEventListener('click', ()=> startConversation());
-if(input) input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn && sendBtn.click(); }});
-
-/* Init */
-document.addEventListener('DOMContentLoaded', ()=>{
-  renderSuggestionChips();
-  startConversation();
-  if(suggestBtn && suggestPanel){
-    suggestBtn.addEventListener('click', ()=>{
-      const shown = suggestPanel.classList.contains('show');
-      if(shown){ suggestPanel.classList.remove('show'); suggestBtn.setAttribute('aria-pressed','false'); }
-      else { renderSuggestionChips(); suggestPanel.classList.add('show'); suggestBtn.setAttribute('aria-pressed','true'); }
+function askSubstancesSelf(){
+  showTyping(700).then(()=>{
+    appendBot('Selecciona cuál(es) sustancia(s) consumes (puedes elegir varias):');
+    const options=['alcohol','marihuana','cocaína','piedra/crack','cristal','ácidos','benzodiacepinas','otras'];
+    showMultiSelect(options,(sel)=>{
+      if(!sel.length){ appendBot('Debes seleccionar al menos una opción'); return; }
+      state.substances=sel; appendUser(sel.join(', '));
+      askFrequencySelf();
     });
-    suggestPanel.classList.remove('show');
-    suggestBtn && suggestBtn.setAttribute('aria-pressed','false');
-  }
-});
+  });
+}
+function askFrequencySelf(){
+  showTyping(650).then(()=>{
+    appendBot('¿Cómo describirías tu patrón de consumo?');
+    showQuickReplies([
+      {text:'Recreativo (ocasional)', onClick:()=>answerFrequency('recreativo')},
+      {text:'Consumo frecuente / diario', onClick:()=>answerFrequency('frecuente')},
+      {text:'Posible dependencia', onClick:()=>answerFrequency('dependencia')},
+      {text:'Creo que ya soy adicto', onClick:()=>answerFrequency('adicto')}
+    ]);
+  });
+}
+function answerFrequency(val){ state.frequency=val; appendUser(_labelForFrequency(val)); showQuickReplies([]); askQuestionEmotional(); }
+
+function askWhoIsIt(){
+  showTyping(600).then(()=>{
+    appendBot('¿Es para un familiar, amigo o conocido?');
+    showQuickReplies([
+      {text:'Familiar', onClick:()=>answerWho('familiar')},
+      {text:'Amigo', onClick:()=>answerWho('amigo')},
+      {text:'Conocido', onClick:()=>answerWho('conocido')}
+    ]);
+  });
+}
+function answerWho(kind){ state.subject={type:kind}; appendUser(kind); showQuickReplies([]); askSubstancesThirdParty(kind); }
+function askSubstancesThirdParty(kind){
+  showTyping(700).then(()=>{
+    appendBot(`¿Qué sustancias consume la persona (${kind})?`);
+    const options=['alcohol','marihuana','cocaína','piedra/crack','cristal','ácidos','benzodiacepinas','otras'];
+    showMultiSelect(options,(sel)=>{
+      state.substances=sel; appendUser(sel.join(', '));
+      askFrequencyThirdParty();
+    });
+  });
+}
+function askFrequencyThirdParty(){
+  showTyping(600).then(()=>{
+    appendBot('¿Cómo describirías su patrón de consumo?');
+    showQuickReplies([
+      {text:'Recreativo (ocasional)', onClick:()=>answerFrequencyThird('recreativo')},
+      {text:'Consumo frecuente / diario', onClick:()=>answerFrequencyThird('frecuente')},
+      {text:'Posible dependencia', onClick:()=>answerFrequencyThird('dependencia')},
+      {text:'Creo que ya es adicto', onClick:()=>answerFrequencyThird('adicto')}
+    ]);
+  });
+}
+function answerFrequencyThird(val){ state.frequency=val; appendUser(_labelForFrequency(val)); showQuickReplies([]); askQuestionEmotional(); }
+
+function askQuestionEmotional(){
+  showTyping(700).then(()=>{
+    appendBot('¿Has notado signos de ansiedad, depresión u otros problemas emocionales?');
+    showQuickReplies([
+      {text:'Sí', className:'positive', onClick:()=>answerEmotional(true)},
+      {text:'No', className:'negative', onClick:()=>answerEmotional(false)}
+    ]);
+  });
+}
+function answerEmotional(val){ state.emotional=val; appendUser(val?'Sí':'No'); showQuickReplies([]); askDiagnosisQuestion(); }
+
+function askDiagnosisQuestion(){
+  showTyping(700).then(()=>{
+    const who=(state.subject!=='self')?'tu conocido, amigo o familia':'tú';
+    appendBot(`¿Cuentas con algún diagnóstico psiquiátrico o de salud mental de ${who}?`);
+    showQuickReplies([
+      {text:'Sí', className:'positive', onClick:()=>answerHasDiagnosis(true)},
+      {text:'No', className:'negative', onClick:()=>answerHasDiagnosis(false)}
+    ]);
+  });
+}
+function answerHasDiagnosis(val){
+  appendUser(val?'Sí':'No'); showQuickReplies([]);
+  if(val) askWhichDiagnosis(); else askSchedulePsychiatric();
+}
+function askWhichDiagnosis(){
+  showTyping(700).then(()=>{
+    appendBot('Selecciona el diagnóstico:');
+    const diagnoses=['TDA','TDAH','TLP','TAG','Depresión mayor','Trastorno bipolar','TEPT','TOC','Esquizofrenia','Otros'];
+    showQuickReplies(diagnoses.map(d=>({text:d,onClick:()=>answerWhichDiagnosis(d)})));
+  });
+}
+function answerWhichDiagnosis(d){ state.diagnosis=d; appendUser(d); showQuickReplies([]); postQuestionFlow(); }
+
+function askSchedulePsychiatric(){
+  showTyping(700).then(()=>{
+    appendBot('¿Gustas agendar una cita para consulta psiquiátrica?');
+    showQuickReplies([
+      {text:'Sí', className:'positive', onClick:()=>answerSchedulePsychiatric(true)},
+      {text:'No', className:'negative', onClick:()=>answerSchedulePsychiatric(false)}
+    ]);
+  });
+}
+function answerSchedulePsychiatric(val){
+  appendUser(val?'Sí':'No'); showQuickReplies([]);
+  if(val) showQuickReplies([
+    {text:'📅 Agendar consulta', className:'positive', onClick:()=>ctaAction('agendar')},
+    {text:'📞 Llamar ahora', className:'negative', onClick:()=>ctaAction('llamar')},
+    {text:'💬 WhatsApp', onClick:()=>ctaAction('whatsapp')}
+  ]);
+  else postQuestionFlow();
+}
+
+/* post-question summary */
+function postQuestionFlow(){
+  showTyping(900).then(()=>{
+    const whoText = state.subject==='self'?'tú':`la persona (${state.subject.type})`;
+    const substancesText = state.substances.length?state.substances.join(', '):'sustancias no especificadas';
+    const freqLabel = state.frequency?_labelForFrequency(state.frequency):'patrón no especificado';
+    const emotionalText = state.emotional?'síntomas emocionales presentes':'sin síntomas emocionales reportados';
+    const diagnosisText = state.diagnosis?`,
