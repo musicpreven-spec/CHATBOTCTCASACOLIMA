@@ -1,4 +1,4 @@
-/* script.js - Versión ampliada con lógica de Tratamiento Residencial y estudio socioeconómico
+/* script.js - Versión con: "tratamiento"/"terapia" hotwords, antidoping, y botón Regresar
    Reemplaza completamente tu script.js con este archivo.
 */
 
@@ -34,7 +34,7 @@ const TREATMENTS = [
   'Programa Sofía',
   'Tratamiento Ambulatorio-Ejecutivo',
   'Programa de Recaídas',
-  'Tratamiento Residencial' // añadido para ser sugerido cuando aplique
+  'Tratamiento Residencial'
 ];
 
 /* ---------- State ---------- */
@@ -50,7 +50,7 @@ const state = {
   barriers: null,
   urgent: false,
 
-  // NEW: treatments & contact collection
+  // treatments & contact
   selectedTreatments: [],
   contactMethod: null,   // 'telefono' | 'whatsapp' | 'correo'
   contact: { name: null, phone: null, email: null },
@@ -58,12 +58,17 @@ const state = {
 
   // socioeconomico
   surveyIndex: 0,
-  surveyResponses: []
+  surveyResponses: [],
+  calculatedDiscount: null,
+
+  // snapshots for "Regresar"
+  snapshots: []
 };
 
 /* ---------- Helpers UI ---------- */
 function scrollBottom(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }
 function clearMessages(){ if(msgs) msgs.innerHTML = ''; }
+
 function appendBot(html, opts = {}) {
   if(!msgs) return;
   const bubble = document.createElement('div');
@@ -84,6 +89,34 @@ function appendUser(text){
   bubble.className = 'bubble user';
   bubble.textContent = text;
   msgs.appendChild(bubble);
+  scrollBottom();
+}
+
+/* ---------- Snapshot (para Regresar) ---------- */
+function pushSnapshot(){
+  try {
+    state.snapshots.push({
+      msgs: msgs ? msgs.innerHTML : '',
+      quick: quickReplies ? quickReplies.innerHTML : '',
+      placeholder: input ? input.placeholder : ''
+    });
+    // limit snapshot stack size to avoid memoria infinita
+    if(state.snapshots.length > 20) state.snapshots.shift();
+  } catch(e){}
+}
+function canGoBack(){ return state.snapshots && state.snapshots.length > 0; }
+function goBack(){
+  if(!canGoBack()) return;
+  // pop the last snapshot (current view) and then restore previous if exists
+  // We want to restore the snapshot before the current one, so pop current and then pop previous
+  state.snapshots.pop(); // remove current
+  const prev = state.snapshots.pop(); // get previous
+  if(!prev) return;
+  msgs.innerHTML = prev.msgs;
+  quickReplies.innerHTML = prev.quick;
+  if(input) input.placeholder = prev.placeholder || 'Escribe un mensaje...';
+  // after restoring, push it back as current so user can still go forward/back again
+  state.snapshots.push(prev);
   scrollBottom();
 }
 
@@ -142,11 +175,23 @@ function showTyping(ms = 800){
   });
 }
 
-/* ---------- Quick replies ---------- */
+/* ---------- Quick replies (ahora añade Regresar si procede) ---------- */
 function showQuickReplies(buttons = []){
   if(!quickReplies) return;
   quickReplies.innerHTML = '';
-  if(!buttons || !buttons.length){ quickReplies.setAttribute('aria-hidden','true'); return; }
+  if(!buttons || !buttons.length){
+    quickReplies.setAttribute('aria-hidden','true');
+    // pero si hay snapshot para regresar, mostrar solo Regresar
+    if(canGoBack()){
+      quickReplies.setAttribute('aria-hidden','false');
+      const backBtn = document.createElement('button');
+      backBtn.className = 'qr-btn negative small';
+      backBtn.textContent = '⟵ Regresar';
+      backBtn.addEventListener('click', ()=> goBack());
+      quickReplies.appendChild(backBtn);
+    }
+    return;
+  }
   quickReplies.setAttribute('aria-hidden','false');
   buttons.forEach(b=>{
     const btn = document.createElement('button');
@@ -155,6 +200,14 @@ function showQuickReplies(buttons = []){
     btn.addEventListener('click', ()=>{ b.onClick && b.onClick(); });
     quickReplies.appendChild(btn);
   });
+  // añadir automáticamente botón "Regresar" si hay snapshot previa
+  if(canGoBack()){
+    const backBtn = document.createElement('button');
+    backBtn.className = 'qr-btn negative small';
+    backBtn.textContent = '⟵ Regresar';
+    backBtn.addEventListener('click', ()=> goBack());
+    quickReplies.appendChild(backBtn);
+  }
 }
 
 /* Multi-select generic */
@@ -184,7 +237,16 @@ function showMultiSelect(options = [], onDone){
     onDone(selected);
   });
   actions.appendChild(cont);
-  quickReplies.appendChild(container); quickReplies.appendChild(actions);
+  quickReplies.appendChild(container);
+  quickReplies.appendChild(actions);
+  // añadir Regresar si procede
+  if(canGoBack()){
+    const backBtn = document.createElement('button');
+    backBtn.className = 'qr-btn negative small';
+    backBtn.textContent = '⟵ Regresar';
+    backBtn.addEventListener('click', ()=> goBack());
+    quickReplies.appendChild(backBtn);
+  }
 }
 
 /* ---------- Keyword detection ---------- */
@@ -197,64 +259,100 @@ function findKeywordCategory(text){
   return null;
 }
 
-/* ---------- Handle typed keywords (rutas rápidas) ---------- */
-function handleKeyword(text){
-  const cat = findKeywordCategory(text);
-  if(cat==='ramaA'){
-    showTyping(700).then(()=>{
-      appendBot('Entiendo. ¿Es para alguien más (familiar, amigo o conocido)?');
-      showQuickReplies([
-        {text:'Familiar', onClick:()=>{ state.subject={type:'familiar'}; appendUser('Familiar'); askSubstancesThirdParty('familiar'); }},
-        {text:'Amigo', onClick:()=>{ state.subject={type:'amigo'}; appendUser('Amigo'); askSubstancesThirdParty('amigo'); }},
-        {text:'Conocido', onClick:()=>{ state.subject={type:'conocido'}; appendUser('Conocido'); askSubstancesThirdParty('conocido'); }}
-      ]);
-    });
-    return;
-  }
-  if(cat==='ramaB'){
-    showTyping(700).then(()=>{
-      appendBot('Gracias por confiar. ¿Actualmente consumes o fue una recaída reciente?');
-      showQuickReplies([
-        {text:'Actualmente sí', className:'positive', onClick:()=>answerConsume(true)},
-        {text:'Fue una recaída', onClick:()=>{ appendUser('Fue una recaída'); state.consumes=true; askSubstancesSelf(); }},
-        {text:'No, pero necesito orientación', onClick:()=>{ appendUser('No, pero necesito orientación'); postQuestionFlow(); }}
-      ]);
-    });
-    return;
-  }
-  if(cat==='ramaC'){
-    showTyping(700).then(()=>{
-      appendBot('Ofrecemos varios servicios incluyendo Programa Sofía y Programa de Recaídas. ¿Cuál te interesa?');
-      showQuickReplies([
-        {text:'Programa Sofía', onClick:()=>{ appendUser('Programa Sofía'); ctaAction('sofia'); }},
-        {text:'Tratamiento Ambulatorio', onClick:()=>{ appendUser('Tratamiento Ambulatorio'); ctaAction('info_ambulatorio'); }},
-        {text:'Tratamiento Residencial', onClick:()=>{ appendUser('Tratamiento Residencial'); ctaAction('info_residencial'); }}
-      ]);
-    });
-    return;
-  }
-  if(cat==='ramaD'){
+/* ---------- Special keyword handlers: tratamiento / terapia / antidoping ---------- */
+function handleSpecialKeywords(text){
+  const t = text.toLowerCase();
+  if(t.includes('tratamiento') || t.includes('tratamientos')){
+    // mostrar todos los tratamientos
+    pushSnapshot();
     showTyping(600).then(()=>{
-      appendBot('Puedes contactarnos por: teléfono, WhatsApp o agendar una cita. ¿Qué prefieres?');
+      appendBot('Aquí están todos los tratamientos que ofrece Casa Colima:');
+      appendBot(TREATMENTS.map(t=>`- ${t}`).join('\n'));
+      // ofrecer selección multi
+      showMultiSelect(TREATMENTS, sel=>{
+        if(!sel.length){ appendBot('Debes seleccionar al menos un tratamiento.'); return; }
+        state.selectedTreatments = sel;
+        appendUser(sel.join(', '));
+        askContactAfterTreatmentSelection();
+      });
+    });
+    return true;
+  }
+  if(t.includes('terapia') || t.includes('terapias')){
+    // mostrar opciones de terapia específicas
+    pushSnapshot();
+    showTyping(600).then(()=>{
+      appendBot('Ofrecemos las siguientes opciones de terapia:');
       showQuickReplies([
-        {text:'📞 Llamar', className:'negative', onClick:()=>ctaAction('llamar')},
-        {text:'💬 WhatsApp', onClick:()=>ctaAction('whatsapp')},
-        {text:'📅 Agendar', className:'positive', onClick:()=>ctaAction('agendar')}
+        { text:'Terapia psicológica Individual/Personal', onClick:()=>{ appendUser('Terapia psicológica Individual/Personal'); handleTherapyIndividual(); } },
+        { text:'Terapia Grupal', onClick:()=>{ appendUser('Terapia Grupal'); handleTherapyGroup(); } },
+        { text:'Consejería en Adicciones', onClick:()=>{ appendUser('Consejería en Adicciones'); handleCounseling(); } }
       ]);
     });
-    return;
+    return true;
   }
-  showTyping(700).then(()=> appendBot('Lo siento, no entendí completamente. Usa las sugerencias o escribe "tratamiento", "contacto" o "agendar".'));
+  if(t.includes('antidoping')){
+    pushSnapshot();
+    showTyping(600).then(()=>{
+      appendBot('Antidoping: es una prueba para detectar el uso de sustancias en orina/sangre (según el tipo). Se utiliza para monitoreo y diagnóstico médico. ¿Deseas agendar una cita para realizar un antidoping?');
+      showQuickReplies([
+        { text:'Sí, agendar', className:'positive', onClick:()=>{ appendUser('Sí, agendar'); startContactCollection('correo'); } }, // pedimos contacto para agendar
+        { text:'No, gracias', className:'negative', onClick:()=>{ appendUser('No, gracias'); appendBot('Entendido. Si cambias de opinión, aquí estamos.'); } }
+      ]);
+    });
+    return true;
+  }
+  return false;
 }
 
-/* ---------- Flow de conversación completo ---------- */
+/* ---------- Handlers para Terapias ---------- */
+function handleTherapyIndividual(){
+  pushSnapshot();
+  showTyping(400).then(()=>{
+    appendBot('La terapia individual puede ser presencial o virtual. ¿Cuál prefieres?');
+    showQuickReplies([
+      { text:'Presencial', onClick:()=>{ appendUser('Presencial'); askContactForTherapy('Presencial'); } },
+      { text:'Virtual', onClick:()=>{ appendUser('Virtual'); askContactForTherapy('Virtual'); } },
+    ]);
+  });
+}
+function askContactForTherapy(modality){
+  // recolectar contacto para agendar
+  state.selectedTreatments = state.selectedTreatments || [];
+  if(!state.selectedTreatments.includes('Terapia psicológica Individual/Personal')) state.selectedTreatments.push('Terapia psicológica Individual/Personal');
+  appendBot(`Perfecto, agendaremos la terapia ${modality}. Por favor dinos tu NOMBRE completo para registrar la solicitud:`);
+  state.pending = 'collect_contact';
+  // store modality in contact for context
+  state.contact.modality = modality;
+}
+function handleTherapyGroup(){
+  pushSnapshot();
+  showTyping(400).then(()=>{
+    appendBot('Tenemos una sesión grupal de prueba completamente GRATIS. ¿Deseas reservar un lugar para la sesión de prueba?');
+    showQuickReplies([
+      { text:'Sí, reservar', className:'positive', onClick:()=>{ appendUser('Sí, reservar'); state.selectedTreatments = state.selectedTreatments || []; if(!state.selectedTreatments.includes('Terapia Grupal')) state.selectedTreatments.push('Terapia Grupal'); state.pending='collect_contact'; appendBot('Perfecto. Por favor indícanos tu NOMBRE completo:'); } },
+      { text:'Quiero más info', onClick:()=>{ appendUser('Quiero más info'); appendBot('La sesión grupal es guiada por un terapeuta, duración aproximada 90 min. Ideal para compartir experiencias y herramientas.'); } }
+    ]);
+  });
+}
+function handleCounseling(){
+  pushSnapshot();
+  showTyping(400).then(()=>{
+    appendBot('La Consejería en Adicciones consiste en sesiones breves de orientación y apoyo. Para darte seguimiento, por favor indícanos tu NOMBRE y teléfono para que te contactemos a la brevedad.');
+    state.selectedTreatments = state.selectedTreatments || [];
+    if(!state.selectedTreatments.includes('Consejería en Adicciones')) state.selectedTreatments.push('Consejería en Adicciones');
+    state.pending='collect_contact';
+  });
+}
+
+/* ---------- Flow de conversación completo (mantenido) ---------- */
 async function startConversation(){
   clearMessages();
   Object.assign(state,{
     subject:'self', consumes:null, substances:[], frequency:null, emotional:null,
     diagnosis:null, pastTreatments:null, treatmentPreference:null, barriers:null, urgent:false,
-    selectedTreatments:[], contactMethod:null, contact:{name:null,phone:null,email:null},
-    pending:null, surveyIndex:0, surveyResponses:[]
+    selectedTreatments:[], contactMethod:null, contact:{name:null,phone:null,email:null}, pending:null,
+    surveyIndex:0, surveyResponses:[], calculatedDiscount:null, snapshots:[]
   });
   appendBot('<strong>Hola — ¿en qué te puedo ayudar hoy?</strong>');
   await delay(600);
@@ -263,6 +361,7 @@ async function startConversation(){
 function delay(ms){ return new Promise(res=>setTimeout(res,ms)); }
 
 function askQuestionConsume(){
+  pushSnapshot();
   showTyping(800).then(()=>{
     appendBot('¿Consumes alcohol u otras sustancias actualmente?');
     showQuickReplies([
@@ -279,6 +378,7 @@ function answerConsume(val){
 }
 
 function askSubstancesSelf(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('Selecciona cuál(es) sustancia(s) consumes (puedes elegir varias):');
     const options=['alcohol','marihuana','cocaína','piedra/crack','cristal','ácidos','benzodiacepinas','otras'];
@@ -290,6 +390,7 @@ function askSubstancesSelf(){
   });
 }
 function askFrequencySelf(){
+  pushSnapshot();
   showTyping(650).then(()=>{
     appendBot('¿Cómo describirías tu patrón de consumo?');
     showQuickReplies([
@@ -303,6 +404,7 @@ function askFrequencySelf(){
 function answerFrequency(val){ state.frequency=val; appendUser(_labelForFrequency(val)); showQuickReplies([]); askQuestionEmotional(); }
 
 function askWhoIsIt(){
+  pushSnapshot();
   showTyping(600).then(()=>{
     appendBot('¿Es para un familiar, amigo o conocido?');
     showQuickReplies([
@@ -314,6 +416,7 @@ function askWhoIsIt(){
 }
 function answerWho(kind){ state.subject={type:kind}; appendUser(kind); showQuickReplies([]); askSubstancesThirdParty(kind); }
 function askSubstancesThirdParty(kind){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot(`¿Qué sustancias consume la persona (${kind})?`);
     const options=['alcohol','marihuana','cocaína','piedra/crack','cristal','ácidos','benzodiacepinas','otras'];
@@ -324,6 +427,7 @@ function askSubstancesThirdParty(kind){
   });
 }
 function askFrequencyThirdParty(){
+  pushSnapshot();
   showTyping(600).then(()=>{
     appendBot('¿Cómo describirías su patrón de consumo?');
     showQuickReplies([
@@ -337,6 +441,7 @@ function askFrequencyThirdParty(){
 function answerFrequencyThird(val){ state.frequency=val; appendUser(_labelForFrequency(val)); showQuickReplies([]); askQuestionEmotional(); }
 
 function askQuestionEmotional(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('¿Has notado signos de ansiedad, depresión u otros problemas emocionales?');
     showQuickReplies([
@@ -348,6 +453,7 @@ function askQuestionEmotional(){
 function answerEmotional(val){ state.emotional=val; appendUser(val?'Sí':'No'); showQuickReplies([]); askDiagnosisQuestion(); }
 
 function askDiagnosisQuestion(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     const who=(state.subject!=='self')?'la persona (conocido, amigo o familia)':'tú';
     appendBot(`¿Cuentas con algún diagnóstico psiquiátrico o de salud mental de ${who}?`);
@@ -362,6 +468,7 @@ function answerHasDiagnosis(val){
   if(val) askWhichDiagnosis(); else askSchedulePsychiatric();
 }
 function askWhichDiagnosis(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('Selecciona el diagnóstico:');
     const diagnoses=['TDA','TDAH','TLP','TAG','Depresión mayor','Trastorno bipolar','TEPT','TOC','Esquizofrenia','Otros'];
@@ -371,6 +478,7 @@ function askWhichDiagnosis(){
 function answerWhichDiagnosis(d){ state.diagnosis=d; appendUser(d); showQuickReplies([]); postQuestionFlow(); }
 
 function askSchedulePsychiatric(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('¿Gustas agendar una cita para consulta psiquiátrica?');
     showQuickReplies([
@@ -389,8 +497,9 @@ function answerSchedulePsychiatric(val){
   else postQuestionFlow();
 }
 
-/* ---------- POST-QUESTION FLOW: ahora detecta patrón que exige residencial ---------- */
+/* ---------- POST-QUESTION FLOW: detecta patrón que exige residencial ---------- */
 function postQuestionFlow(){
+  pushSnapshot();
   showTyping(900).then(()=>{
     const whoText = (state.subject==='self')?'tú':`la persona (${state.subject.type})`;
     const substancesText = state.substances.length?state.substances.join(', '):'sustancias no especificadas';
@@ -400,10 +509,8 @@ function postQuestionFlow(){
     appendBot(`Resumen de información:\n- Persona: ${whoText}\n- Sustancias: ${substancesText}\n- Frecuencia: ${freqLabel}\n- Estado emocional: ${emotionalText}${diagnosisText}\n\nPodemos orientarte sobre terapias, tratamientos y apoyo.`);
     // --- Si el patrón es 'frecuente' o 'adicto' sugerimos residencial directamente ---
     if(state.frequency === 'frecuente' || state.frequency === 'adicto'){
-      // sugerencia directa de tratamiento residencial que incluye contención y desintoxicación
       suggestResidentialDueToPattern();
     } else {
-      // comportamiento estándar: mostrar lista de tratamientos
       showQuickReplies([
         {text:'📅 Agendar cita', className:'positive', onClick:()=>ctaAction('agendar')},
         {text:'📞 Llamar', className:'negative', onClick:()=>ctaAction('llamar')},
@@ -416,6 +523,7 @@ function postQuestionFlow(){
 
 /* ---------- RESIDENCIAL / DESCUENTO FAMILIAR ---------- */
 function suggestResidentialDueToPattern(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('Por el patrón de consumo que mencionaste, recomendamos <strong>Tratamiento Residencial</strong>, que incluye contención y desintoxicación supervisada. ¿Deseas que te proporcione más información o aplicar para este tratamiento?');
     showQuickReplies([
@@ -427,31 +535,25 @@ function suggestResidentialDueToPattern(){
 }
 
 function offerFamilyDiscountPrompt(){
+  pushSnapshot();
   showTyping(500).then(()=>{
     appendBot('¿Te interesa aplicar para un descuento familiar que puede reducir el costo del tratamiento?');
     showQuickReplies([
       {text:'Sí, deseo descuento', className:'positive', onClick:()=>{ appendUser('Sí, deseo descuento'); askApplyFamilyDiscount(true); }},
-      {text:'No, gracias', className:'negative', onClick:()=>{ appendUser('No, gracias'); askTreatmentsAfterSummary(); }}
+      {text:'No, gracias', className:'negative', onClick:()=>{ appendUser('No, gracias'); askContactAfterTreatmentSelection(); }}
     ]);
   });
 }
 
 function askApplyFamilyDiscount(wants){
   if(wants){
-    // empezar estudio socioeconómico
     startSocioEconomicSurvey();
   } else {
-    // si no desea descuento, continuar con recolección de contacto normal
     askContactAfterTreatmentSelection();
   }
 }
 
 /* ---------- SOCIOECONÓMICO (sencillo, formal, discreto) ---------- */
-/*
-  Enfoque: preguntas cortas, lenguaje respetuoso, que den idea económica.
-  Cada respuesta genera un puntaje; el puntaje total se mapea a un % de descuento (10% - 70%).
-  Nunca mostramos el costo total al usuario, solo el porcentaje calculado.
-*/
 const SURVEY_QUESTIONS = [
   { key:'hogar', q: 'Para entender mejor tu situación: ¿cuántas personas viven en tu hogar (incluyéndote)?', type:'choices',
     choices: ['1','2','3-4','5 o más'] },
@@ -470,11 +572,12 @@ const SURVEY_QUESTIONS = [
 ];
 
 function startSocioEconomicSurvey(){
+  pushSnapshot();
   state.surveyIndex = 0;
   state.surveyResponses = [];
   state.pending = 'socio';
   showTyping(400).then(()=>{
-    appendBot('Entiendo. Vamos a realizar unas preguntas breves, confidenciales y formales para evaluar si aplicas al descuento. Tus respuestas serán tratadas con discreción. Si en algún momento prefieres no responder, puedes escribir "Prefiero no decir". ¿Deseas continuar?');
+    appendBot('Vamos a realizar unas preguntas breves, confidenciales y formales para evaluar si aplicas al descuento. Si prefieres no responder alguna, selecciona "Prefiero no decir". ¿Deseas continuar?');
     showQuickReplies([
       {text:'Continuar', className:'positive', onClick:()=>{ appendUser('Continuar'); askNextSurveyQuestion(); }},
       {text:'Prefiero no decir', className:'negative', onClick:()=>{ appendUser('Prefiero no decir'); state.pending=null; askContactAfterTreatmentSelection(); }}
@@ -485,112 +588,58 @@ function startSocioEconomicSurvey(){
 function askNextSurveyQuestion(){
   const i = state.surveyIndex;
   if(i >= SURVEY_QUESTIONS.length){
-    // terminar encuesta
     finalizeSocioEconomicSurvey();
     return;
   }
+  pushSnapshot();
   const item = SURVEY_QUESTIONS[i];
   showTyping(500).then(()=>{
-    // mostrar pregunta y opciones
     appendBot(item.q);
-    // mostrar choices como quick replies
     const opts = item.choices.map(ch => ({ text: ch, onClick: ()=>{ processSurveyAnswer(ch); } }));
-    // añadir opción 'Prefiero no decir'
     opts.push({ text: 'Prefiero no decir', onClick: ()=>{ processSurveyAnswer('Prefiero no decir'); }});
     showQuickReplies(opts);
   });
 }
 
 function processSurveyAnswer(answer){
-  // registrar respuesta (incluso 'Prefiero no decir')
   state.surveyResponses.push(answer);
   appendUser(answer);
   state.surveyIndex += 1;
-  // ir a la siguiente o finalizar
-  if(state.surveyIndex < SURVEY_QUESTIONS.length){
-    askNextSurveyQuestion();
-  } else {
-    finalizeSocioEconomicSurvey();
-  }
+  if(state.surveyIndex < SURVEY_QUESTIONS.length) askNextSurveyQuestion();
+  else finalizeSocioEconomicSurvey();
 }
 
 function finalizeSocioEconomicSurvey(){
   state.pending = null;
-  // calcular puntaje (mapeo interno)
   const score = calculateSocioScore(state.surveyResponses);
   const discount = mapScoreToDiscount(score);
-  // guardar resultado en estado
   state.calculatedDiscount = discount;
-  // mostrar resultado SOLO como porcentaje, sin revelar costo total
+  pushSnapshot();
   showTyping(900).then(()=>{
-    appendBot(`Gracias por tu confianza. De acuerdo con la información proporcionada, **podrías ser acreedor a un descuento del ${discount}%** para el Tratamiento Residencial. No te preocupes: uno de nuestros especialistas revisará tu caso con discreción y, si todo procede, se aplicará el descuento.`);
-    // ahora pedimos contacto para proceder
+    appendBot(`Gracias por tu confianza. De acuerdo con la información proporcionada, podrías ser acreedor a un descuento del ${discount}% para el Tratamiento Residencial. Uno de nuestros especialistas revisará tu caso con discreción y se comunicará contigo.`);
     askContactAfterTreatmentSelection();
   });
 }
 
-/* Lógica de cálculo:
-   - Para cada respuesta damos puntos (0..X). Suma total -> mapea a %.
-   - Rango final: retorna 10,20,30,40,50,60,70.
-   - Implementación pensada para que respuestas con mayor vulnerabilidad obtengan mayor %.
-*/
 function calculateSocioScore(responses){
-  // responses is array aligned with SURVEY_QUESTIONS
   let s = 0;
-  // question 0: hogar
   const a0 = responses[0] || '';
-  if(a0 === '1') s += 1;
-  else if(a0 === '2') s += 2;
-  else if(a0 === '3-4') s += 4;
-  else if(a0 === '5 o más') s += 6;
-  // question 1: ingreso
+  if(a0 === '1') s += 1; else if(a0 === '2') s += 2; else if(a0 === '3-4') s += 4; else if(a0 === '5 o más') s += 6;
   const a1 = responses[1] || '';
-  if(a1 === 'Menos de 6,000') s += 6;
-  else if(a1 === '6,000 - 12,000') s += 4;
-  else if(a1 === '12,001 - 25,000') s += 2;
-  else if(a1 === 'Más de 25,000') s += 0;
-  // question 2: empleo
+  if(a1 === 'Menos de 6,000') s += 6; else if(a1 === '6,000 - 12,000') s += 4; else if(a1 === '12,001 - 25,000') s += 2; else if(a1 === 'Más de 25,000') s += 0;
   const a2 = responses[2] || '';
-  if(a2 === 'Sin empleo') s += 6;
-  else if(a2 === 'Empleo informal / trabajos eventuales') s += 4;
-  else if(a2 === 'Empleo formal tiempo parcial') s += 2;
-  else if(a2 === 'Empleo formal tiempo completo') s += 0;
-  // question 3: gastos_medicos
+  if(a2 === 'Sin empleo') s += 6; else if(a2 === 'Empleo informal / trabajos eventuales') s += 4; else if(a2 === 'Empleo formal tiempo parcial') s += 2; else if(a2 === 'Empleo formal tiempo completo') s += 0;
   const a3 = responses[3] || '';
-  if(a3 === 'Sí, significativos') s += 6;
-  else if(a3 === 'Algunos gastos') s += 4;
-  else if(a3 === 'Pocos o ninguno') s += 1;
-  else if(a3 === 'No') s += 0;
-  // question 4: vivienda
+  if(a3 === 'Sí, significativos') s += 6; else if(a3 === 'Algunos gastos') s += 4; else if(a3 === 'Pocos o ninguno') s += 1; else if(a3 === 'No') s += 0;
   const a4 = responses[4] || '';
-  if(a4 === 'Alquilada con dificultad para pagar') s += 6;
-  else if(a4 === 'Alquilada sin dificultades') s += 3;
-  else if(a4 === 'Vivienda propia con hipoteca/crédito') s += 2;
-  else if(a4 === 'Vivienda propia sin carga financiera') s += 0;
-  // question 5: apoyos
+  if(a4 === 'Alquilada con dificultad para pagar') s += 6; else if(a4 === 'Alquilada sin dificultades') s += 3; else if(a4 === 'Vivienda propia con hipoteca/crédito') s += 2; else if(a4 === 'Vivienda propia sin carga financiera') s += 0;
   const a5 = responses[5] || '';
-  if(a5 === 'Sí, apoyo regular') s += 0; // recibir apoyo reduce necesidad de descuento
-  else if(a5 === 'Apoyo ocasional') s += 2;
-  else if(a5 === 'No recibimos apoyos') s += 4;
-  else if(a5 === 'No deseo responder') s += 2;
-  // question 6: responsabilidades
+  if(a5 === 'Sí, apoyo regular') s += 0; else if(a5 === 'Apoyo ocasional') s += 2; else if(a5 === 'No recibimos apoyos') s += 4; else if(a5 === 'No deseo responder') s += 2;
   const a6 = responses[6] || '';
-  if(a6 === 'Sí, varios') s += 6;
-  else if(a6 === 'Sí, uno') s += 3;
-  else if(a6 === 'No') s += 0;
-  return s; // puntaje total
+  if(a6 === 'Sí, varios') s += 6; else if(a6 === 'Sí, uno') s += 3; else if(a6 === 'No') s += 0;
+  return s;
 }
-
 function mapScoreToDiscount(score){
-  // score range approx 0 .. 34
-  // map to tiers:
-  // 0-3 -> 10%
-  // 4-8 -> 20%
-  // 9-13 -> 30%
-  // 14-18 -> 40%
-  // 19-23 -> 50%
-  // 24-28 -> 60%
-  // 29+ -> 70%
   if(score <= 3) return 10;
   if(score <= 8) return 20;
   if(score <= 13) return 30;
@@ -600,16 +649,15 @@ function mapScoreToDiscount(score){
   return 70;
 }
 
-/* ---------- Contact collection after selección de tratamiento ---------- */
+/* ---------- Selección de tratamientos y recolección de contacto ---------- */
 function askTreatmentsAfterSummary(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('Elige uno o varios tratamientos de interés:');
-    // mostramos lista sin incluir Residencial si ya sugerido por patrón (pero permitirlo)
     showMultiSelect(TREATMENTS, (sel)=>{
       if(!sel.length){ appendBot('Debes seleccionar al menos un tratamiento.'); return; }
       state.selectedTreatments = sel;
       appendUser(sel.join(', '));
-      // Informar y recolectar contacto
       showTyping(600).then(()=>{
         appendBot(`Gracias. Para brindarte un servicio personalizado (consulta gratis y sin costo), necesitamos tus datos y tu método de contacto preferido. ¿Cómo prefieres que te contactemos?`);
         showQuickReplies([
@@ -623,6 +671,7 @@ function askTreatmentsAfterSummary(){
 }
 
 function askContactAfterTreatmentSelection(){
+  pushSnapshot();
   showTyping(500).then(()=>{
     appendBot('Para continuar, por favor indícanos tu método de contacto preferido:');
     showQuickReplies([
@@ -636,9 +685,7 @@ function askContactAfterTreatmentSelection(){
 function startContactCollection(method){
   state.contactMethod = method;
   state.pending = 'collect_contact';
-  // reset contact fields just in case
   state.contact = { name:null, phone:null, email:null };
-  // Informar al usuario
   const methodText = method==='telefono'?'teléfono':(method==='whatsapp'?'WhatsApp':'correo electrónico');
   appendBot(`Perfecto. Vamos a registrar tus datos para que el equipo se comunique por ${methodText}. La consulta es gratis y no tiene costo. Por favor escribe tu NOMBRE completo:`);
   if(input) input.focus();
@@ -648,26 +695,22 @@ function startContactCollection(method){
 function processContactInput(text){
   if(!state.pending) return false;
   if(state.pending === 'collect_contact'){
-    // Si no hay nombre -> recibir nombre
     if(!state.contact.name){
       state.contact.name = text;
       appendUser(text);
       appendBot('Gracias. Ahora escribe tu NÚMERO de teléfono (incluye lada si aplica):');
       return true;
     }
-    // Si no hay phone -> recibir phone
     if(!state.contact.phone){
       state.contact.phone = text;
       appendUser(text);
       appendBot('Perfecto. Finalmente escríbenos tu CORREO electrónico:');
       return true;
     }
-    // Si no hay email -> recibir email y finalizar
     if(!state.contact.email){
       state.contact.email = text;
       appendUser(text);
       state.pending = null;
-      // Confirmación y mensaje final (si aplica descuento calculado ya se incluye)
       const discountText = state.calculatedDiscount ? ` Se aplicará un descuento del ${state.calculatedDiscount}% según el estudio socioeconómico.` : '';
       showTyping(700).then(()=>{
         appendBot(`Gracias ${state.contact.name}. Hemos registrado:\n- Tratamiento(s): ${state.selectedTreatments.join(', ')}\n- Método de contacto preferido: ${state.contactMethod}\n- Teléfono: ${state.contact.phone}\n- Correo: ${state.contact.email}\n\nLa consulta es GRATIS y uno de nuestros especialistas te contactará a la brevedad para darte atención personalizada.${discountText}`);
@@ -681,8 +724,6 @@ function processContactInput(text){
     }
   }
   if(state.pending === 'socio'){
-    // In theory we handle socio via quick replies; if user typed free text, treat as 'Prefiero no decir' or skip
-    // To keep flow robust, accept typed 'Prefiero no decir' to abort survey
     if(text.toLowerCase().includes('prefiero')){
       appendUser(text);
       state.pending = null;
@@ -690,7 +731,6 @@ function processContactInput(text){
       askContactAfterTreatmentSelection();
       return true;
     }
-    // Otherwise ignore text or inform user to use options
     appendBot('Por favor selecciona una de las opciones mostradas para esta pregunta.');
     return true;
   }
@@ -699,6 +739,7 @@ function processContactInput(text){
 
 /* ---------- Nuevas preguntas: historial, preferencia, barreras, urgencia (mantengo) ---------- */
 function askPastTreatments(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('¿Has intentado algún tratamiento antes (terapias, programas, medicación)?');
     showQuickReplies([
@@ -719,6 +760,7 @@ function answerPastTreatments(val){
 }
 
 function askTreatmentPreference(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('¿Tienes preferencia por tratamiento ambulatorio (seguir en casa) o residencial (internamiento)?');
     showQuickReplies([
@@ -736,6 +778,7 @@ function answerTreatmentPreference(val){
 }
 
 function askBarriers(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('¿Qué barreras tienes para acceder al tratamiento? (puedes elegir varias)');
     showMultiSelect(['Costo','Transporte','Trabajo / permiso','Estigma / familia','Tiempo / horario','Ninguna / puedo acceder'], (sel)=>{
@@ -749,6 +792,7 @@ function askBarriers(){
 }
 
 function postTreatmentOptions(){
+  pushSnapshot();
   showTyping(700).then(()=>{
     appendBot('Con la información que nos diste, podemos ofrecer:\n- Orientación en terapia individual/grupal\n- Opciones de tratamiento ambulatorio o residencial\n- Programa Sofía (apoyo psicosocial)\n- Programa de Recaídas (seguimiento)');
     showQuickReplies([
@@ -761,6 +805,7 @@ function postTreatmentOptions(){
 }
 
 function askUrgentHelp(){
+  pushSnapshot();
   showTyping(500).then(()=>{
     appendBot('¿Hay riesgo inmediato para la persona (pensamientos suicidas, riesgo de daño a sí mismo o a otros)?');
     showQuickReplies([
@@ -828,7 +873,7 @@ if(sendBtn){
   sendBtn.addEventListener('click', ()=>{
     const val = (input && input.value)? input.value.trim():''; 
     if(!val) return;
-    // Si estamos recolectando contacto o en socio, procesarlo primero
+    // Si estamos procesando contacto/socio, atender primero
     if(state.pending === 'collect_contact' || state.pending === 'socio'){
       const handled = processContactInput(val);
       if(handled){
@@ -838,16 +883,19 @@ if(sendBtn){
     }
     appendUser(val);
     if(input) input.value='';
+    // priorizar special keywords
+    if(handleSpecialKeywords(val)) return;
+    // fallback keyword routing
     const cat = findKeywordCategory(val);
     if(cat) showTyping(900).then(()=> handleKeyword(val));
-    else showTyping(900).then(()=> appendBot('Gracias. Puedes seleccionar una opción o escribir una palabra clave (ej. "terapia", "contacto" o "agendar").'));
+    else showTyping(900).then(()=> appendBot('Gracias. Puedes seleccionar una opción o escribir una palabra clave (ej. "terapia", "tratamiento", "antidoping" o "agendar").'));
   });
 }
 if(resetBtn) resetBtn.addEventListener('click', ()=> startConversation());
 if(input) input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn && sendBtn.click(); }});
 
-/* ---------- Suggestions ---------- */
-const DEFAULT_KEYWORDS=['tratamiento','terapia','recaídas','consumo de sustancias','contacto','Programa Sofía','Programa de Recaídas'];
+/* ---------- Suggestions (incluye 'antidoping') ---------- */
+const DEFAULT_KEYWORDS=['tratamiento','terapia','recaídas','consumo de sustancias','contacto','Programa Sofía','Programa de Recaídas','antidoping'];
 function renderSuggestionChips(){
   if(!suggestChips) return;
   const keywordList=[].concat(...Object.values(KEYWORDS));
@@ -858,9 +906,59 @@ function renderSuggestionChips(){
     const chip=document.createElement('button');
     chip.className='suggest-chip';
     chip.textContent=k;
-    chip.addEventListener('click', ()=>{ appendUser(k); showTyping(700).then(()=> handleKeyword(k)); });
+    chip.addEventListener('click', ()=>{ appendUser(k); showTyping(700).then(()=> { if(handleSpecialKeywords(k)) return; handleKeyword(k); }); });
     suggestChips.appendChild(chip);
   });
+}
+
+/* ---------- Basic keyword handler (no special words) ---------- */
+function handleKeyword(text){
+  const cat = findKeywordCategory(text);
+  if(cat==='ramaA'){
+    showTyping(700).then(()=>{
+      appendBot('Entiendo. ¿Es para alguien más (familiar, amigo o conocido)?');
+      showQuickReplies([
+        {text:'Familiar', onClick:()=>{ state.subject={type:'familiar'}; appendUser('Familiar'); askSubstancesThirdParty('familiar'); }},
+        {text:'Amigo', onClick:()=>{ state.subject={type:'amigo'}; appendUser('Amigo'); askSubstancesThirdParty('amigo'); }},
+        {text:'Conocido', onClick:()=>{ state.subject={type:'conocido'}; appendUser('Conocido'); askSubstancesThirdParty('conocido'); }}
+      ]);
+    });
+    return;
+  }
+  if(cat==='ramaB'){
+    showTyping(700).then(()=>{
+      appendBot('Gracias por confiar. ¿Actualmente consumes o fue una recaída reciente?');
+      showQuickReplies([
+        {text:'Actualmente sí', className:'positive', onClick:()=>answerConsume(true)},
+        {text:'Fue una recaída', onClick:()=>{ appendUser('Fue una recaída'); state.consumes=true; askSubstancesSelf(); }},
+        {text:'No, pero necesito orientación', onClick:()=>{ appendUser('No, pero necesito orientación'); postQuestionFlow(); }}
+      ]);
+    });
+    return;
+  }
+  if(cat==='ramaC'){
+    showTyping(700).then(()=>{
+      appendBot('Ofrecemos varios servicios incluyendo Programa Sofía y Programa de Recaídas. ¿Cuál te interesa?');
+      showQuickReplies([
+        {text:'Programa Sofía', onClick:()=>{ appendUser('Programa Sofía'); ctaAction('sofia'); }},
+        {text:'Tratamiento Ambulatorio', onClick:()=>{ appendUser('Tratamiento Ambulatorio'); ctaAction('info_ambulatorio'); }},
+        {text:'Tratamiento Residencial', onClick:()=>{ appendUser('Tratamiento Residencial'); ctaAction('info_residencial'); }}
+      ]);
+    });
+    return;
+  }
+  if(cat==='ramaD'){
+    showTyping(600).then(()=>{
+      appendBot('Puedes contactarnos por: teléfono, WhatsApp o agendar una cita. ¿Qué prefieres?');
+      showQuickReplies([
+        {text:'📞 Llamar', className:'negative', onClick:()=>ctaAction('llamar')},
+        {text:'💬 WhatsApp', onClick:()=>ctaAction('whatsapp')},
+        {text:'📅 Agendar', className:'positive', onClick:()=>ctaAction('agendar')}
+      ]);
+    });
+    return;
+  }
+  showTyping(700).then(()=> appendBot('Lo siento, no entendí completamente. Usa las sugerencias o escribe "tratamiento", "terapia", "antidoping" o "agendar".'));
 }
 
 /* ---------- Init ---------- */
@@ -877,3 +975,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
     suggestBtn && suggestBtn.setAttribute('aria-pressed','false');
   }
 });
+
+
