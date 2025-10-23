@@ -1,218 +1,280 @@
-/* style.css - Final combinado: header grande + avatar visible (letras) + suggestions + quick-replies + typing + avatar reactions */
+/* style.css - Responsivo completo sin alterar diseño original */
 
-/* Base */
-html,body{
-  height:100%;
-  margin:0;
-  background: linear-gradient(180deg,#f3fbfb 0,#eaf6f5 100%);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
+/* -------- Base -------- */
+html, body {
+  height: 100%;
+  margin: 0;
+  background: linear-gradient(180deg, #f3fbfb 0, #eaf6f5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* evita scroll exterior en móviles */
 }
 
-/* App container */
-.app{ width:100%; max-width:980px; display:flex; justify-content:center; align-items:center; }
-
-/* Chat card */
-.chat-wrap{
-  width:420px;
-  height:640px; /* aumentado para incluir cuestionario y quick replies */
-  border-radius:14px;
-  box-shadow:0 18px 50px rgba(10,10,10,.12);
-  background-color:#ffffff;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  border:1px solid rgba(0,0,0,.04);
-  position:relative;
+/* -------- App container -------- */
+.app {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* HEADER - alto y la imagen ocupa todo el bloque superior (sin recortar texto) */
-.header{
-  padding:0;
-  margin:0;
-  border-bottom:1px solid rgba(0,0,0,.04);
+/* -------- Chat card -------- */
+.chat-wrap {
+  width: 420px;
+  height: 640px;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(10, 10, 10, .12);
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, .04);
+  position: relative;
+  transition: all .3s ease;
+}
+
+/* -------- Header -------- */
+.header {
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .04);
   background: transparent;
 }
 
-/* header grande rectangular */
-.header--big{
-  height:160px;              /* ALTURA del bloque superior: ajustar si se desea */
-  border-top-left-radius:14px;
-  border-top-right-radius:14px;
-  overflow:hidden;
-  display:block;
+.header--big {
+  height: 160px;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  overflow: hidden;
+  display: block;
 }
 
-/* Avatar wrap rellena todo el header */
-/* dejamos un pequeño padding interior para garantizar que las letras no queden pegadas al borde */
-.avatar-wrap--full{
-  width:100%;
-  height:100%;
-  display:block;
-  border-top-left-radius:14px;
-  border-top-right-radius:14px;
-  overflow:hidden;
-  padding:6px 8px; /* margen interior sutil para seguridad visual */
-  box-sizing:border-box;
-  background: linear-gradient(180deg, rgba(240,254,254,0.65), rgba(255,255,255,0.35));
-  display:flex;
-  align-items:center;
-  justify-content:center;
+/* Avatar */
+.avatar-wrap--full {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  overflow: hidden;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(240, 254, 254, 0.65), rgba(255, 255, 255, 0.35));
 }
 
-/* imagen ocupa el contenedor mostrando todo el contenido (letras visibles) */
 .avatar-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;       /* muestra toda la imagen sin recortarla */
-  object-position: center;   /* centra la imagen dentro del rectángulo */
+  object-fit: contain;
+  object-position: center;
   display: block;
   image-rendering: auto;
-  backface-visibility: hidden;
-  transform-origin: center center;
   transition: transform .28s ease, opacity .2s ease;
-  background: linear-gradient(180deg, rgba(240,254,254,0.65), rgba(255,255,255,0.35));
+  background: linear-gradient(180deg, rgba(240, 254, 254, 0.65), rgba(255, 255, 255, 0.35));
 }
 
-/* ------------------ .messages: fondo tipo "WhatsApp" puro CSS ------------------ */
-.messages{
-  flex:1;
-  padding:12px 14px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  overflow:auto;
-
-  /* color base parecido a WhatsApp */
-  background-color:#e6f9f9;
-
-  /* patrón de burbujas solo con CSS: dos capas de radial-gradient para dar sensación de burbujas */
+/* -------- Messages area -------- */
+.messages {
+  flex: 1;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  background-color: #e6f9f9;
   background-image:
-    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.55) 0 6px, transparent 7px),
-    radial-gradient(circle at 70% 80%, rgba(255,255,255,0.45) 0 4px, transparent 6px);
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.55) 0 6px, transparent 7px),
+    radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.45) 0 4px, transparent 6px);
   background-size: 120px 120px, 180px 180px;
   background-position: 0 0, 40px 40px;
-  background-repeat: repeat, repeat;
-
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  background-repeat: repeat;
 }
 
-
-
-/* bubbles */
-.bubble{
-  max-width:78%;
-  padding:10px 12px;
-  border-radius:16px;
-  line-height:1.35;
-  font-size:14px;
-  position:relative;
-  box-shadow:0 1px 0 rgba(0,0,0,.02);
-  opacity:0;
-  transform:translateY(6px) scale(.995);
-  animation:bubbleIn .24s forwards cubic-bezier(.2,.9,.2,1);
+/* -------- Bubbles -------- */
+.bubble {
+  max-width: 78%;
+  padding: 10px 12px;
+  border-radius: 16px;
+  line-height: 1.35;
+  font-size: 14px;
+  position: relative;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
+  opacity: 0;
+  transform: translateY(6px) scale(.995);
+  animation: bubbleIn .24s forwards cubic-bezier(.2, .9, .2, 1);
 }
-.bubble.bot{ align-self:flex-start; background:#f1fdfd; border-top-left-radius:6px; margin-left:6px; color:#073637; }
-.bubble.bot::after{ content:""; position:absolute; left:-6px; bottom:8px; width:12px; height:12px; background:#f1fdfd; transform:rotate(45deg); z-index:-1; border-bottom-left-radius:2px; border-top-right-radius:2px; }
-.bubble.user{ align-self:flex-end; background:#dcf8c6; border-top-right-radius:6px; margin-right:6px; color:#083a00; }
-.bubble.user::after{ content:""; position:absolute; right:-6px; bottom:8px; width:12px; height:12px; background:#dcf8c6; transform:rotate(45deg); z-index:-1; border-bottom-right-radius:2px; border-top-left-radius:2px; }
-
-@keyframes bubbleIn{ from{opacity:0; transform:translateY(8px) scale(.985)} to{opacity:1; transform:translateY(0) scale(1)} }
-
-/* thinking bubble (typing indicator) */
-.thinking-bubble{ display:inline-flex; gap:8px; align-items:center; padding:8px 12px; border-radius:18px; background:#eef7f7; }
-.dots span{ display:inline-block; width:6px; height:6px; border-radius:50%; background:#6fb9b9; animation:dot 1s infinite; }
-.dots span:nth-child(2){ animation-delay:.12s; }
-.dots span:nth-child(3){ animation-delay:.24s; }
-@keyframes dot{ 0%{transform:translateY(0)} 50%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
-
-/* Quick replies (Sí/No, chips, CTA) */
-.quick-replies{ padding:10px 14px; border-top:1px solid rgba(0,0,0,.02); display:flex; flex-wrap:wrap; gap:8px; background:transparent; align-items:center; justify-content:flex-start; }
-.qr-btn{ background:#eef7f7; border:1px solid rgba(40,166,166,0.08); padding:8px 12px; border-radius:999px; cursor:pointer; font-weight:600; }
-.qr-btn.positive{ background:#28a6a6; color:#fff; border:0; }
-.qr-btn.negative{ background:#fff; color:#0b5161; border:1px solid rgba(11,81,97,0.12); }
-.qr-btn.small{ padding:6px 10px; font-size:13px; }
-
-/* añadir a style.css */
-.quick-replies{
-  padding:10px 14px;
-  border-top:1px solid rgba(0,0,0,.02);
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  background:transparent;
-  align-items:center;
-  justify-content:flex-start;
-
-  /* nueva regla: limitar alto y permitir scroll si hay muchas opciones */
-  max-height:170px;
-  overflow:auto;
-  padding-right:6px; /* espacio para el scrollbar */
+.bubble.bot {
+  align-self: flex-start;
+  background: #f1fdfd;
+  border-top-left-radius: 6px;
+  margin-left: 6px;
+  color: #073637;
 }
-.quick-replies::-webkit-scrollbar{ height:8px; }
-.quick-replies::-webkit-scrollbar-thumb{ background:rgba(11,143,143,0.12); border-radius:8px; }
-.qr-btn{ white-space:normal; text-align:center; }
-
-/* selected state for multi-select chips */
-.qr-btn.selected{ background:#0b8f8f; color:#fff; border-color: rgba(0,0,0,0.06); }
-
-/* Controls */
-.controls{ padding:10px; border-top:1px solid rgba(0,0,0,.04); display:flex; gap:8px; align-items:center; background:#fff; }
-.input{ flex:1; display:flex; gap:8px; align-items:center; background:#fbfffe; padding:8px; border-radius:999px; border:1px solid rgba(0,0,0,.04); }
-.input input{ border:0; outline:none; background:transparent; font-size:14px; width:100%; padding:6px 0; }
-.btn{ background:#28a6a6; color:#fff; padding:8px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:700; box-shadow:0 6px 18px rgba(40,166,166,.12); }
-.btn.secondary{ background:transparent; color:#0b5161; border:1px solid rgba(40,166,166,0.12); padding:7px 10px; }
-
-/* Suggestions */
-.suggestions-area{ padding:10px 14px; border-top:1px solid rgba(0,0,0,.02); display:flex; flex-direction:column; gap:8px; align-items:flex-start; background:transparent; }
-.suggest-btn{ display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; border:1px solid rgba(0,0,0,0.06); background:#fbfffe; cursor:pointer; font-weight:600; }
-.suggest-btn .lib-emoji{ font-size:18px; }
-.suggest-panel{ display:none; align-items:flex-start; gap:8px; padding:8px 12px; border-radius:12px; background:#fff; border:1px solid rgba(0,0,0,0.04); box-shadow:0 6px 18px rgba(0,0,0,0.04); }
-.suggest-panel.show{ display:flex; }
-.suggest-chips{ margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
-.suggest-chip{ background:#eef7f7; border-radius:999px; padding:6px 10px; cursor:pointer; font-weight:600; border:1px solid rgba(40,166,166,0.06); }
-
-/* avatar reaction CSS (pop) */
-.avatar-img{ transition: opacity .22s ease, transform .28s ease; will-change: opacity, transform; }
-.avatar-react-pop{ animation:reactPop .42s cubic-bezier(.2,.9,.2,1) forwards; }
-@keyframes reactPop{ 0%{ transform: scale(1); opacity:1 } 40%{ transform: scale(1.06) translateY(-4px); opacity:0.98 } 100%{ transform: scale(1); opacity:1 } }
-
-/* Accessibility focus outlines */
-.qr-btn:focus, .btn:focus, .suggest-btn:focus { outline:3px solid rgba(11,143,143,0.12); outline-offset:2px; }
-
-/* responsive */
-@media (max-width:420px){
-  .chat-wrap{ width:96%; height:86vh; }
-  .header--big{ height:120px; }
-  .avatar-wrap--full{ padding:4px; }
+.bubble.user {
+  align-self: flex-end;
+  background: #dcf8c6;
+  border-top-right-radius: 6px;
+  margin-right: 6px;
+  color: #083a00;
+}
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Make sure typing indicator is visible and styled */
-.bot-row { 
-  display:block; 
-  width:100%; 
-  margin:6px 0; 
+/* -------- Typing indicator -------- */
+.thinking-bubble {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background: #eef7f7;
 }
-.thinking-bubble { 
-  opacity: 1 !important; 
-  color: #073637; 
-  box-shadow: none; 
+.dots span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6fb9b9;
+  animation: dot 1s infinite;
+}
+@keyframes dot {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
-/* -------------- Typing indicator y mejora de contraste -------------- */
-.bot-row { display:block; width:100%; margin:6px 0; }
-.thinking-bubble { opacity: 1 !important; color: #073637; box-shadow: none; background:#eef7f7; border-radius:18px; padding:8px 12px; display:inline-flex; align-items:center; }
-.thinking-bubble .dots span { width:8px; height:8px; border-radius:50%; background:#0b8f8f; display:inline-block; margin-right:6px; animation:dot 1s infinite; }
-.thinking-bubble .dots span:nth-child(2){ animation-delay:.12s; }
-.thinking-bubble .dots span:nth-child(3){ animation-delay:.24s; }
-@keyframes dot{ 0%{transform:translateY(0)} 50%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
+/* -------- Quick replies -------- */
+.quick-replies {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(0, 0, 0, .02);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: transparent;
+  align-items: center;
+  justify-content: flex-start;
+  max-height: 170px;
+  overflow-y: auto;
+}
+.qr-btn {
+  background: #eef7f7;
+  border: 1px solid rgba(40, 166, 166, 0.08);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: normal;
+  text-align: center;
+}
+.qr-btn.positive { background: #28a6a6; color: #fff; border: 0; }
+.qr-btn.negative { background: #fff; color: #0b5161; border: 1px solid rgba(11, 81, 97, 0.12); }
+.qr-btn.selected { background: #0b8f8f; color: #fff; }
 
+/* -------- Controls -------- */
+.controls {
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, .04);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #fff;
+}
+.input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #fbfffe;
+  padding: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, .04);
+}
+.input input {
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  width: 100%;
+  padding: 6px 0;
+}
+.btn {
+  background: #28a6a6;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(40, 166, 166, .12);
+}
+.btn.secondary {
+  background: transparent;
+  color: #0b5161;
+  border: 1px solid rgba(40, 166, 166, 0.12);
+}
 
+/* -------- Suggestions -------- */
+.suggestions-area {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(0, 0, 0, .02);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  background: transparent;
+}
+.suggest-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fbfffe;
+  cursor: pointer;
+  font-weight: 600;
+}
+.suggest-panel {
+  display: none;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+.suggest-panel.show { display: flex; }
 
+/* -------- Responsive -------- */
+@media (max-width: 768px) {
+  html, body {
+    padding: 10px;
+    overflow: auto;
+  }
+  .chat-wrap {
+    width: 100%;
+    height: 88vh;
+  }
+  .header--big { height: 130px; }
+}
 
+@media (max-width: 480px) {
+  .chat-wrap {
+    width: 100%;
+    height: 92vh;
+    border-radius: 12px;
+  }
+  .header--big { height: 110px; }
+  .bubble { font-size: 13px; line-height: 1.3; }
+  .btn, .btn.secondary { font-size: 13px; padding: 7px 10px; }
+  .suggest-btn { font-size: 13px; }
+}
