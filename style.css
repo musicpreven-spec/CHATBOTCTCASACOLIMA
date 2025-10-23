@@ -1,4 +1,4 @@
-/* style.css - Responsivo completo sin alterar diseño original */
+/* style.css - Responsivo total y sin alterar diseño original */
 
 /* -------- Base -------- */
 html, body {
@@ -12,7 +12,7 @@ html, body {
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden; /* evita scroll exterior en móviles */
+  overflow: hidden; /* evita scroll exterior */
 }
 
 /* -------- App container -------- */
@@ -37,6 +37,7 @@ html, body {
   border: 1px solid rgba(0, 0, 0, .04);
   position: relative;
   transition: all .3s ease;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* -------- Header -------- */
@@ -46,7 +47,6 @@ html, body {
   border-bottom: 1px solid rgba(0, 0, 0, .04);
   background: transparent;
 }
-
 .header--big {
   height: 160px;
   border-top-left-radius: 14px;
@@ -54,8 +54,6 @@ html, body {
   overflow: hidden;
   display: block;
 }
-
-/* Avatar */
 .avatar-wrap--full {
   width: 100%;
   height: 100%;
@@ -69,7 +67,6 @@ html, body {
   box-sizing: border-box;
   background: linear-gradient(180deg, rgba(240, 254, 254, 0.65), rgba(255, 255, 255, 0.35));
 }
-
 .avatar-img {
   width: 100%;
   height: 100%;
@@ -89,6 +86,7 @@ html, body {
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
+  scroll-behavior: smooth;
   background-color: #e6f9f9;
   background-image:
     radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.55) 0 6px, transparent 7px),
@@ -96,6 +94,7 @@ html, body {
   background-size: 120px 120px, 180px 180px;
   background-position: 0 0, 40px 40px;
   background-repeat: repeat;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* -------- Bubbles -------- */
@@ -110,6 +109,8 @@ html, body {
   opacity: 0;
   transform: translateY(6px) scale(.995);
   animation: bubbleIn .24s forwards cubic-bezier(.2, .9, .2, 1);
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 .bubble.bot {
   align-self: flex-start;
@@ -164,6 +165,7 @@ html, body {
   justify-content: flex-start;
   max-height: 170px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .qr-btn {
   background: #eef7f7;
@@ -174,7 +176,9 @@ html, body {
   font-weight: 600;
   white-space: normal;
   text-align: center;
+  transition: background .2s ease;
 }
+.qr-btn:hover { background: #dff3f3; }
 .qr-btn.positive { background: #28a6a6; color: #fff; border: 0; }
 .qr-btn.negative { background: #fff; color: #0b5161; border: 1px solid rgba(11, 81, 97, 0.12); }
 .qr-btn.selected { background: #0b8f8f; color: #fff; }
@@ -214,11 +218,16 @@ html, body {
   cursor: pointer;
   font-weight: 700;
   box-shadow: 0 6px 18px rgba(40, 166, 166, .12);
+  transition: background .2s ease, transform .1s ease;
 }
+.btn:hover { background: #249292; transform: scale(1.03); }
 .btn.secondary {
   background: transparent;
   color: #0b5161;
   border: 1px solid rgba(40, 166, 166, 0.12);
+}
+.btn.secondary:hover {
+  background: #eef7f7;
 }
 
 /* -------- Suggestions -------- */
@@ -263,18 +272,21 @@ html, body {
   .chat-wrap {
     width: 100%;
     height: 88vh;
+    max-width: 100%;
   }
   .header--big { height: 130px; }
 }
 
 @media (max-width: 480px) {
+  html, body { padding: 8px; }
   .chat-wrap {
     width: 100%;
-    height: 92vh;
+    height: 94vh;
     border-radius: 12px;
   }
   .header--big { height: 110px; }
   .bubble { font-size: 13px; line-height: 1.3; }
   .btn, .btn.secondary { font-size: 13px; padding: 7px 10px; }
   .suggest-btn { font-size: 13px; }
+  .controls { gap: 6px; padding: 8px; }
 }
